@@ -5,7 +5,7 @@ import { DataTable } from "@/components/dashboard/data-table";
 import Logo from "@/components/logo";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, User, BookCopy } from "lucide-react";
+import { BookOpen, User, BookCopy, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
@@ -36,8 +36,8 @@ export default function Home() {
         const sheetData = await response.json();
         setData(sheetData);
         toast({
-            title: "Success!",
-            description: "Data loaded from your Google Sheet.",
+          title: "Success!",
+          description: "Data loaded from your Google Sheet.",
         });
       } catch (error: any) {
         toast({
@@ -57,18 +57,20 @@ export default function Home() {
     if (initialSheetUrl) {
       handleImport(initialSheetUrl);
     } else {
-        toast({
-            variant: "destructive",
-            title: "Configuration Error",
-            description: "Google Sheet URL is not configured in environment variables.",
-        });
-        setIsLoading(false);
+      toast({
+        variant: "destructive",
+        title: "Configuration Error",
+        description:
+          "Google Sheet URL is not configured in environment variables.",
+      });
+      setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const productTypes = useMemo(
-    () => ["all", ...new Set(data.map((item) => item.productType).filter(Boolean))],
+    () =>
+      ["all", ...new Set(data.map((item) => item.productType).filter(Boolean))],
     [data]
   );
   const courses = useMemo(
@@ -106,19 +108,16 @@ export default function Home() {
 
     return filtered;
   }, [data, globalFilter, productTypeFilter, courseFilter, teacher1Filter]);
-  
+
   const summary = useMemo(() => {
-    const isAnyFilterActive = productTypeFilter !== "all" || courseFilter !== "all" || teacher1Filter !== "all" || globalFilter !== "";
-    const sourceData = isAnyFilterActive ? filteredData : data;
     return {
       total: data.length,
       filtered: filteredData.length,
-      courses: new Set(sourceData.map(item => item.course).filter(Boolean)).size,
-      teachers: new Set(sourceData.map(item => item.teacher1).filter(Boolean)).size,
-      isAnyFilterActive,
+      courses: new Set(filteredData.map(item => item.course).filter(Boolean)).size,
+      teachers: new Set(filteredData.map(item => item.teacher1).filter(Boolean)).size,
+      productTypes: new Set(filteredData.map(item => item.productType).filter(Boolean)).size,
     }
-  }, [data, filteredData, productTypeFilter, courseFilter, teacher1Filter, globalFilter]);
-
+  }, [data, filteredData]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -141,40 +140,64 @@ export default function Home() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {summary.isAnyFilterActive ? "Filtered Classes" : "Total Classes"}
+                Total Classes
               </CardTitle>
               <BookCopy className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                 {summary.filtered}
-              </div>
+              <div className="text-2xl font-bold">{summary.filtered}</div>
+               <p className="text-xs text-muted-foreground">
+                of {summary.total} total
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unique Courses</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Unique Courses
+              </CardTitle>
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{summary.courses}</div>
+               <p className="text-xs text-muted-foreground">
+                in current view
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unique Teachers</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Unique Teachers
+              </CardTitle>
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{summary.teachers}</div>
+               <p className="text-xs text-muted-foreground">
+                in current view
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Product Types
+              </CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summary.productTypes}</div>
+               <p className="text-xs text-muted-foreground">
+                in current view
+              </p>
             </CardContent>
           </Card>
         </div>
 
-
-        <DataTable 
-          data={filteredData} 
-          allColumns={allColumns} 
+        <DataTable
+          data={filteredData}
+          allColumns={allColumns}
           productTypes={productTypes}
           courses={courses}
           teachers={teachers}
