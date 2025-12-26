@@ -71,15 +71,15 @@ export default function Home() {
   };
 
   const productTypes = useMemo(
-    () => ["all", ...new Set(data.map((item) => item.productType))],
+    () => ["all", ...new Set(data.map((item) => item.productType).filter(Boolean))],
     [data]
   );
   const courses = useMemo(
-    () => ["all", ...new Set(data.map((item) => item.course))],
+    () => ["all", ...new Set(data.map((item) => item.course).filter(Boolean))],
     [data]
   );
   const teachers = useMemo(
-    () => ["all", ...new Set(data.map((item) => item.teacher1))],
+    () => ["all", ...new Set(data.map((item) => item.teacher1).filter(Boolean))],
     [data]
   );
 
@@ -114,8 +114,8 @@ export default function Home() {
     return {
       total: data.length,
       filtered: filteredData.length,
-      courses: new Set(filteredData.map(item => item.course)).size,
-      teachers: new Set(filteredData.map(item => item.teacher1)).size
+      courses: new Set(filteredData.map(item => item.course).filter(Boolean)).size,
+      teachers: new Set(filteredData.map(item => item.teacher1).filter(Boolean)).size
     }
   }, [data, filteredData]);
 
