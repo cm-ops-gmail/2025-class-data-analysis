@@ -75,9 +75,16 @@ export async function POST(request: Request) {
     const headerMap: { [key: number]: keyof ClassEntry } = {};
     const lowerCaseKeyMap = new Map(classEntryKeys.map(k => [k.toLowerCase().replace(/[^a-z0-9]/gi, ''), k]));
 
+    // A special map for headers that don't match the standard normalization
+    const specialHeaderMap: {[key: string]: keyof ClassEntry} = {
+      'totaldurationminute': 'totalDurationMinutes'
+    };
+
     header.forEach((h, i) => {
         const normalizedHeader = h.toLowerCase().replace(/[^a-z0-9]/gi, '');
-        if (lowerCaseKeyMap.has(normalizedHeader)) {
+        if (specialHeaderMap[normalizedHeader]) {
+             headerMap[i] = specialHeaderMap[normalizedHeader];
+        } else if (lowerCaseKeyMap.has(normalizedHeader)) {
             headerMap[i] = lowerCaseKeyMap.get(normalizedHeader)!;
         }
     });
