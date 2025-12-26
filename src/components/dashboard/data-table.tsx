@@ -33,6 +33,7 @@ import {
   Search,
   Columns,
   Edit,
+  Loader,
 } from "lucide-react";
 import type { ClassEntry } from "@/lib/definitions";
 import { EditDialog } from "./edit-dialog";
@@ -75,6 +76,7 @@ interface DataTableProps {
   teacher1Filter: string;
   setTeacher1Filter: (value: string) => void;
   onDataUpdate: (data: ClassEntry[]) => void;
+  isLoading: boolean;
 }
 
 export function DataTable({
@@ -92,6 +94,7 @@ export function DataTable({
   teacher1Filter,
   setTeacher1Filter,
   onDataUpdate,
+  isLoading,
 }: DataTableProps) {
   const { toast } = useToast();
   const [sortConfig, setSortConfig] = React.useState<SortConfig>(null);
@@ -287,12 +290,18 @@ export function DataTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.length > 0 ? (
+            {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                        <Loader className="mx-auto h-8 w-8 animate-spin" />
+                    </TableCell>
+                </TableRow>
+            ) : sortedData.length > 0 ? (
               sortedData.map((row) => (
                 <TableRow key={row.id}>
                   {visibleColumns.map((col) => (
                     <TableCell key={col.key} className="max-w-[250px] truncate">
-                      {row[col.key]}
+                      {String(row[col.key] ?? '')}
                     </TableCell>
                   ))}
                   <TableCell className="text-right">

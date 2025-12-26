@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DataTable } from "@/components/dashboard/data-table";
 import { classEntries as initialClassEntries } from "@/lib/data";
 import Logo from "@/components/logo";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, Search, BookOpen, User, BookCopy } from "lucide-react";
+import { Loader, BookOpen, User, BookCopy } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function Home() {
   const [data, setData] = useState<ClassEntry[]>(initialClassEntries);
   const [sheetUrl, setSheetUrl] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const [globalFilter, setGlobalFilter] = useState("");
@@ -29,13 +29,15 @@ export default function Home() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [teacher1Filter, setTeacher1Filter] = useState("all");
 
-  const handleImport = async () => {
-    if (!sheetUrl) {
+  const handleImport = async (url?: string) => {
+    const importUrl = url || sheetUrl;
+    if (!importUrl) {
       toast({
         variant: "destructive",
         title: "Invalid URL",
         description: "Please enter a valid Google Sheet URL.",
       });
+      setIsLoading(false);
       return;
     }
     setIsLoading(true);
@@ -43,7 +45,7 @@ export default function Home() {
       const response = await fetch("/api/sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetUrl }),
+        body: JSON.stringify({ sheetUrl: importUrl }),
       });
 
       if (!response.ok) {
@@ -53,10 +55,12 @@ export default function Home() {
 
       const sheetData = await response.json();
       setData(sheetData);
-      toast({
-        title: "Success!",
-        description: "Data imported successfully from your Google Sheet.",
-      });
+      if(!url){
+        toast({
+            title: "Success!",
+            description: "Data imported successfully from your Google Sheet.",
+        });
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -69,6 +73,18 @@ export default function Home() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // The URL is fetched from the server-side environment variable via a script in the layout
+    const initialSheetUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL;
+    if (initialSheetUrl) {
+      setSheetUrl(initialSheetUrl);
+      handleImport(initialSheetUrl);
+    } else {
+        setIsLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const productTypes = useMemo(
     () => ["all", ...new Set(data.map((item) => item.productType).filter(Boolean))],
@@ -111,13 +127,15 @@ export default function Home() {
   }, [data, globalFilter, productTypeFilter, courseFilter, teacher1Filter]);
   
   const summary = useMemo(() => {
+    const isAnyFilterActive = productTypeFilter !== "all" || courseFilter !== "all" || teacher1Filter !== "all" || globalFilter !== "";
     return {
       total: data.length,
       filtered: filteredData.length,
       courses: new Set(filteredData.map(item => item.course).filter(Boolean)).size,
-      teachers: new Set(filteredData.map(item => item.teacher1).filter(Boolean)).size
+      teachers: new Set(filteredData.map(item => item.teacher1).filter(Boolean)).size,
+      isAnyFilterActive,
     }
-  }, [data, filteredData]);
+  }, [data.length, filteredData, productTypeFilter, courseFilter, teacher1Filter, globalFilter]);
 
 
   return (
@@ -153,7 +171,7 @@ export default function Home() {
               onChange={(e) => setSheetUrl(e.target.value)}
               disabled={isLoading}
             />
-            <Button onClick={handleImport} disabled={isLoading}>
+            <Button onClick={() => handleImport()} disabled={isLoading}>
               {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Import
             </Button>
@@ -163,20 +181,15 @@ export default function Home() {
         <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {summary.isAnyFilterActive ? "Filtered Classes" : "Total Classes"}
+              </CardTitle>
               <BookCopy className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Filtered Classes</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.filtered}</div>
+              <div className="text-2xl font-bold">
+                 {summary.isAnyFilterActive ? summary.filtered : summary.total}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -215,6 +228,7 @@ export default function Home() {
           teacher1Filter={teacher1Filter}
           setTeacher1Filter={setTeacher1Filter}
           onDataUpdate={setData}
+          isLoading={isLoading}
         />
       </main>
     </div>

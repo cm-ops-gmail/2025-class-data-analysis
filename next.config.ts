@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  env: {
+    NEXT_PUBLIC_GOOGLE_SHEET_URL: process.env.GOOGLE_SHEET_URL,
+  }
 };
 
 export default nextConfig;
