@@ -174,7 +174,7 @@ export default function Home() {
       totalAttendance: totalAttendance,
       averageAttendance: averageAttendance,
     }
-  }, [data.length, filteredData]);
+  }, [filteredData, data.length]);
   
   const clearAllFilters = () => {
     setGlobalFilter("");
