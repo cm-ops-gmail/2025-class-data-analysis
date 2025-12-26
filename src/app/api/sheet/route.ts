@@ -32,10 +32,10 @@ export async function POST(request: Request) {
       auth: process.env.GOOGLE_SHEETS_API_KEY,
     });
 
-    // Assuming data is in the first sheet, change 'Sheet1' if needed
+    // Assuming data is in the first sheet, change 'Central_Class_OPS' if needed
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Sheet1",
+      range: "Central_Class_OPS",
     });
 
     const rows = response.data.values;
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
           {} as Record<keyof ClassEntry, any>
         );
         const matchingKey = definitionKeys.find(
-          (k) => k.toLowerCase() === key.toLowerCase()
+          (k) => k.toLowerCase() === String(key).toLowerCase()
         ) as keyof ClassEntry | undefined;
 
         if (matchingKey) {
