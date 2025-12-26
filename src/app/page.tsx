@@ -14,9 +14,9 @@ export default function Home() {
   const { toast } = useToast();
 
   const [globalFilter, setGlobalFilter] = useState("");
-  const [productTypeFilter, setProductTypeFilter] = useState("all");
-  const [courseFilter, setCourseFilter] = useState("all");
-  const [teacher1Filter, setTeacher1Filter] = useState("all");
+  const [productTypeFilters, setProductTypeFilters] = useState<string[]>([]);
+  const [courseFilters, setCourseFilters] = useState<string[]>([]);
+  const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
 
   useEffect(() => {
     const handleImport = async (url: string) => {
@@ -69,32 +69,35 @@ export default function Home() {
   }, []);
 
   const productTypes = useMemo(
-    () =>
-      ["all", ...new Set(data.map((item) => item.productType).filter(Boolean))],
+    () => [...new Set(data.map((item) => item.productType).filter(Boolean))],
     [data]
   );
   const courses = useMemo(
-    () => ["all", ...new Set(data.map((item) => item.course).filter(Boolean))],
+    () => [...new Set(data.map((item) => item.course).filter(Boolean))],
     [data]
   );
   const teachers = useMemo(
-    () => ["all", ...new Set(data.map((item) => item.teacher1).filter(Boolean))],
+    () => [...new Set(data.map((item) => item.teacher1).filter(Boolean))],
     [data]
   );
 
   const filteredData = useMemo(() => {
     let filtered = data;
 
-    if (productTypeFilter !== "all") {
-      filtered = filtered.filter(
-        (item) => item.productType === productTypeFilter
+    if (productTypeFilters.length > 0) {
+      filtered = filtered.filter((item) =>
+        productTypeFilters.includes(item.productType)
       );
     }
-    if (courseFilter !== "all") {
-      filtered = filtered.filter((item) => item.course === courseFilter);
+    if (courseFilters.length > 0) {
+      filtered = filtered.filter((item) =>
+        courseFilters.includes(item.course)
+      );
     }
-    if (teacher1Filter !== "all") {
-      filtered = filtered.filter((item) => item.teacher1 === teacher1Filter);
+    if (teacher1Filters.length > 0) {
+      filtered = filtered.filter((item) =>
+        teacher1Filters.includes(item.teacher1)
+      );
     }
 
     if (globalFilter) {
@@ -107,17 +110,18 @@ export default function Home() {
     }
 
     return filtered;
-  }, [data, globalFilter, productTypeFilter, courseFilter, teacher1Filter]);
+  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters]);
 
   const summary = useMemo(() => {
+    const activeData = filteredData;
     return {
       total: data.length,
-      filtered: filteredData.length,
-      courses: new Set(filteredData.map(item => item.course).filter(Boolean)).size,
-      teachers: new Set(filteredData.map(item => item.teacher1).filter(Boolean)).size,
-      productTypes: new Set(filteredData.map(item => item.productType).filter(Boolean)).size,
+      filtered: activeData.length,
+      courses: new Set(activeData.map(item => item.course).filter(Boolean)).size,
+      teachers: new Set(activeData.map(item => item.teacher1).filter(Boolean)).size,
+      productTypes: new Set(activeData.map(item => item.productType).filter(Boolean)).size,
     }
-  }, [data, filteredData]);
+  }, [data.length, filteredData]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -203,12 +207,12 @@ export default function Home() {
           teachers={teachers}
           globalFilter={globalFilter}
           setGlobalFilter={setGlobalFilter}
-          productTypeFilter={productTypeFilter}
-          setProductTypeFilter={setProductTypeFilter}
-          courseFilter={courseFilter}
-          setCourseFilter={setCourseFilter}
-          teacher1Filter={teacher1Filter}
-          setTeacher1Filter={setTeacher1Filter}
+          productTypeFilters={productTypeFilters}
+          setProductTypeFilters={setProductTypeFilters}
+          courseFilters={courseFilters}
+          setCourseFilters={setCourseFilters}
+          teacher1Filters={teacher1Filters}
+          setTeacher1Filters={setTeacher1Filters}
           onDataUpdate={setData}
           isLoading={isLoading}
         />
@@ -257,3 +261,5 @@ const allColumns = [
   { key: "classQACFeedback", header: "QAC Feedback" },
   { key: "remarks", header: "Remarks" },
 ];
+
+    

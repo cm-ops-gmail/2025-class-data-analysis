@@ -31,7 +31,7 @@ import {
 import type { ClassEntry } from "@/lib/definitions";
 import { EditDialog } from "./edit-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Combobox } from "../ui/combobox";
+import { MultiSelectFilter } from "./multi-select-filter";
 
 type ColumnDef = {
   key: keyof ClassEntry;
@@ -63,12 +63,12 @@ interface DataTableProps {
   teachers: string[];
   globalFilter: string;
   setGlobalFilter: (value: string) => void;
-  productTypeFilter: string;
-  setProductTypeFilter: (value: string) => void;
-  courseFilter: string;
-  setCourseFilter: (value: string) => void;
-  teacher1Filter: string;
-  setTeacher1Filter: (value: string) => void;
+  productTypeFilters: string[];
+  setProductTypeFilters: (value: string[]) => void;
+  courseFilters: string[];
+  setCourseFilters: (value: string[]) => void;
+  teacher1Filters: string[];
+  setTeacher1Filters: (value: string[]) => void;
   onDataUpdate: (data: ClassEntry[]) => void;
   isLoading: boolean;
 }
@@ -81,12 +81,12 @@ export function DataTable({
   teachers,
   globalFilter,
   setGlobalFilter,
-  productTypeFilter,
-  setProductTypeFilter,
-  courseFilter,
-  setCourseFilter,
-  teacher1Filter,
-  setTeacher1Filter,
+  productTypeFilters,
+  setProductTypeFilters,
+  courseFilters,
+  setCourseFilters,
+  teacher1Filters,
+  setTeacher1Filters,
   onDataUpdate,
   isLoading,
 }: DataTableProps) {
@@ -155,8 +155,6 @@ export function DataTable({
   };
 
   const handleSave = (updatedRow: ClassEntry) => {
-    // This is a bit of a hack. We need to update the original data source.
-    // A better solution would involve a global state management library.
     const event = new CustomEvent('data-update', { detail: (prevData: ClassEntry[]) =>
       prevData.map((row) => (row.id === updatedRow.id ? updatedRow : row))
     });
@@ -186,31 +184,25 @@ export function DataTable({
           />
         </div>
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <Combobox
-            options={productTypes.map(type => ({ value: type, label: type === 'all' ? 'All Product Types' : type }))}
-            selectedValue={productTypeFilter}
-            onSelectedValueChange={setProductTypeFilter}
-            placeholder="Filter by product type..."
-            searchPlaceholder="Search product types..."
-            noResultsMessage="No product types found."
+          <MultiSelectFilter
+            title="Product Types"
+            options={productTypes.map(type => ({ value: type, label: type }))}
+            selectedValues={productTypeFilters}
+            onSelectedValuesChange={setProductTypeFilters}
             triggerClassName="w-full md:w-[250px] lg:w-[200px]"
           />
-           <Combobox
-            options={courses.map(type => ({ value: type, label: type === 'all' ? 'All Courses' : type }))}
-            selectedValue={courseFilter}
-            onSelectedValueChange={setCourseFilter}
-            placeholder="Filter by course..."
-            searchPlaceholder="Search courses..."
-            noResultsMessage="No courses found."
+          <MultiSelectFilter
+            title="Courses"
+            options={courses.map(course => ({ value: course, label: course }))}
+            selectedValues={courseFilters}
+            onSelectedValuesChange={setCourseFilters}
             triggerClassName="w-full md:w-[250px] lg:w-[200px]"
           />
-          <Combobox
-            options={teachers.map(type => ({ value: type, label: type === 'all' ? 'All Teachers' : type }))}
-            selectedValue={teacher1Filter}
-            onSelectedValueChange={setTeacher1Filter}
-            placeholder="Filter by teacher..."
-            searchPlaceholder="Search teachers..."
-            noResultsMessage="No teachers found."
+          <MultiSelectFilter
+            title="Teachers"
+            options={teachers.map(teacher => ({ value: teacher, label: teacher }))}
+            selectedValues={teacher1Filters}
+            onSelectedValuesChange={setTeacher1Filters}
             triggerClassName="w-full md:w-[250px] lg:w-[200px]"
           />
 
@@ -327,3 +319,5 @@ export function DataTable({
     </div>
   );
 }
+
+    
