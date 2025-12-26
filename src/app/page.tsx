@@ -136,13 +136,13 @@ export default function Home() {
         return isNaN(attendance) ? max : Math.max(max, attendance);
     }, 0);
 
-    const totalAverageAttendance = activeData.reduce((acc, item) => {
-        const attendance = parseFloat(item.averageAttendance);
+    const totalAttendance = activeData.reduce((acc, item) => {
+        const attendance = parseInt(item.highestAttendance, 10);
         return acc + (isNaN(attendance) ? 0 : attendance);
     }, 0);
 
     const averageAttendance = activeData.length > 0
-        ? Math.round(totalAverageAttendance / activeData.length)
+        ? Math.round(totalAttendance / activeData.length)
         : 0;
 
     return {
