@@ -348,7 +348,21 @@ export default function Home() {
               <Clock className="h-4 w-4 text-chart-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-chart-4">{summary.totalDuration.toLocaleString()}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-chart-4">{summary.totalDuration.toLocaleString()}</div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="text-sm w-auto" side="top" align="end">
+                      <div className="font-bold">
+                        {(summary.totalDuration / 60).toFixed(1)} hours
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+              </div>
                <p className="text-xs text-muted-foreground">
                 in current view
               </p>
