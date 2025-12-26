@@ -5,7 +5,7 @@ import { DataTable } from "@/components/dashboard/data-table";
 import Logo from "@/components/logo";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, User, BookCopy, Activity, Clock, TrendingUp, Users, Info } from "lucide-react";
+import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,6 @@ export default function Home() {
       total: data.length,
       filtered: activeData.length,
       courses: uniqueCourses,
-      teachers: new Set(activeData.map(item => item.teacher1).filter(Boolean)).size,
       productTypes: uniqueProductTypes,
       totalDuration: Math.round(totalDuration),
       highestAttendance: highestAttendance,
@@ -197,7 +196,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -245,20 +244,6 @@ export default function Home() {
                     </PopoverContent>
                   </Popover>
               </div>
-               <p className="text-xs text-muted-foreground">
-                in current view
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Unique Teachers
-              </CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.teachers}</div>
                <p className="text-xs text-muted-foreground">
                 in current view
               </p>

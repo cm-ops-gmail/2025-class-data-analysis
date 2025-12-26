@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -23,15 +22,11 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
-  Search,
   Columns,
-  Edit,
   Loader,
   X,
 } from "lucide-react";
 import type { ClassEntry } from "@/lib/definitions";
-import { EditDialog } from "./edit-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { MultiSelectFilter } from "./multi-select-filter";
 
 type ColumnDef = {
@@ -111,9 +106,7 @@ export function DataTable({
   onDataUpdate,
   isLoading,
 }: DataTableProps) {
-  const { toast } = useToast();
   const [sortConfig, setSortConfig] = React.useState<SortConfig>(null);
-  const [editingRow, setEditingRow] = React.useState<ClassEntry | null>(null);
 
   const [columnVisibility, setColumnVisibility] = React.useState<
     Record<keyof ClassEntry, boolean>
@@ -181,37 +174,11 @@ export function DataTable({
     setSortConfig({ key, direction });
   };
 
-  const handleSave = (updatedRow: ClassEntry) => {
-    const event = new CustomEvent('data-update', { detail: (prevData: ClassEntry[]) =>
-      prevData.map((row) => (row.id === updatedRow.id ? updatedRow : row))
-    });
-    window.dispatchEvent(event);
-
-    onDataUpdate(
-      (prevData) => prevData.map((row) => (row.id === updatedRow.id ? updatedRow : row))
-    )
-
-    setEditingRow(null);
-    toast({
-      title: "Success",
-      description: "Entry updated successfully.",
-    });
-  };
-
   const isFiltered = globalFilter || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-1 items-center space-x-2">
-          <Search className="h-5 w-5 text-muted-foreground" />
-          <Input
-            placeholder="Search all columns..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="h-10 w-full md:w-[350px]"
-          />
-        </div>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:flex-wrap">
           <MultiSelectFilter
             title="Product Types"
@@ -312,13 +279,12 @@ export function DataTable({
                   )}
                 </TableHead>
               ))}
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
+                    <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
                         <Loader className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
@@ -330,22 +296,12 @@ export function DataTable({
                       {String(row[col.key] ?? '')}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingRow(row)}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit Row</span>
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={visibleColumns.length + 1}
+                  colSpan={visibleColumns.length}
                   className="h-24 text-center"
                 >
                   No results found.
@@ -355,15 +311,6 @@ export function DataTable({
           </TableBody>
         </Table>
       </div>
-      {editingRow && (
-        <EditDialog
-          isOpen={!!editingRow}
-          setIsOpen={(open) => !open && setEditingRow(null)}
-          classEntry={editingRow}
-          onSave={handleSave}
-          columns={allColumns}
-        />
-      )}
     </div>
   );
 }
