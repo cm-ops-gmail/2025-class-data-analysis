@@ -8,6 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -274,31 +281,28 @@ export default function Home() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="text-2xl font-bold text-chart-1">{summary.filtered}</div>
-                  <Popover>
-                    <PopoverTrigger asChild>
+                  <Dialog>
+                    <DialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-5 w-5">
                         <Info className="h-4 w-4 text-muted-foreground" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto max-w-[350px]" side="top" align="end">
-                       <div className="space-y-2">
-                          <h4 className="font-medium leading-none">Filtered Classes</h4>
-                          <p className="text-xs text-muted-foreground">
-                              List of classes in the current view.
-                          </p>
-                      </div>
-                      <ScrollArea className="h-48 mt-4">
-                        <div className="flex flex-col gap-2 text-sm">
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[625px]">
+                       <DialogHeader>
+                          <DialogTitle>Filtered Classes</DialogTitle>
+                       </DialogHeader>
+                      <ScrollArea className="h-72 mt-4">
+                        <div className="flex flex-col gap-2 text-sm pr-6">
                           {filteredData.map(item => (
-                            <div key={item.id} className="flex justify-between items-center gap-4">
+                            <div key={item.id} className="flex justify-between items-center gap-4 border-b pb-2">
                               <span className="text-muted-foreground">{item.date}</span>
                               <span className="font-medium text-right truncate">{item.course}</span>
                             </div>
                           ))}
                         </div>
                       </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
+                    </DialogContent>
+                  </Dialog>
               </div>
                <p className="text-xs text-muted-foreground">
                 of {summary.total} total
@@ -560,3 +564,5 @@ const allColumns = [
   { key: "classQACFeedback", header: "QAC Feedback" },
   { key: "remarks", header: "Remarks" }
 ];
+
+    
