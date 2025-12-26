@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
   if (value === null || value === undefined) return 0;
@@ -451,45 +452,65 @@ export default function Home() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="text-2xl font-bold text-chart-6">{summary.averageAttendance.toLocaleString()}</div>
-                <Popover>
-                  <PopoverTrigger asChild>
+                <Dialog>
+                  <DialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-5 w-5">
                       <Info className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="text-sm w-auto" side="top" align="end">
-                    <div className="grid gap-2">
-                      <div className="font-bold">Calculation</div>
-                      <div className="flex items-center gap-1.5">
-                        Total Attendance:
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="link" size="sm" className="p-0 h-auto text-sm">{summary.totalAttendance.toLocaleString()}</Button>
-                          </PopoverTrigger>
-                          <PopoverContent side="bottom" align="center" className="w-64">
-                              <div className="space-y-2">
-                                  <h4 className="font-medium leading-none">Attendance Summation</h4>
-                                  <p className="text-xs text-muted-foreground">
-                                      Individual attendance counts being added.
-                                  </p>
-                              </div>
-                              <ScrollArea className="h-48 mt-4">
-                                  <div className="text-xs p-2 bg-muted rounded-md break-all">
-                                      {filteredData.map(item => parseNumericValue(item.averageAttendance)).join(' + ')}
-                                  </div>
-                              </ScrollArea>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div>
-                        Total Classes: {summary.filtered.toLocaleString()}
-                      </div>
-                      <p className="font-bold border-t pt-2 mt-1">
-                        {summary.totalAttendance.toLocaleString()} / {summary.filtered > 0 ? summary.filtered.toLocaleString() : 1} = {summary.averageAttendance.toLocaleString()}
-                      </p>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Calculation</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                            Total Attendance:
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="link" size="sm" className="p-0 h-auto text-sm">{summary.totalAttendance.toLocaleString()}</Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-2xl">
+                                    <DialogHeader>
+                                        <DialogTitle>Total Attendance Breakdown</DialogTitle>
+                                    </DialogHeader>
+                                    <ScrollArea className="h-96 mt-4">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Class Topic</TableHead>
+                                                    <TableHead>Course</TableHead>
+                                                    <TableHead className="text-right">Attendance</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredData.map(item => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell className="font-medium max-w-xs truncate">{item.topic}</TableCell>
+                                                        <TableCell>{item.course}</TableCell>
+                                                        <TableCell className="text-right">{parseNumericValue(item.averageAttendance).toLocaleString()}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                            <TableFooter>
+                                                <TableRow>
+                                                    <TableCell colSpan={2} className="font-bold">Total</TableCell>
+                                                    <TableCell className="text-right font-bold">{summary.totalAttendance.toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            </TableFooter>
+                                        </Table>
+                                    </ScrollArea>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                        <div>
+                            Total Classes: {summary.filtered.toLocaleString()}
+                        </div>
+                        <p className="font-bold border-t pt-2 mt-1">
+                            {summary.totalAttendance.toLocaleString()} / {summary.filtered > 0 ? summary.filtered.toLocaleString() : 1} = {summary.averageAttendance.toLocaleString()}
+                        </p>
                     </div>
-                  </PopoverContent>
-                </Popover>
+                  </DialogContent>
+                </Dialog>
               </div>
                <p className="text-xs text-muted-foreground">
                 in current view
