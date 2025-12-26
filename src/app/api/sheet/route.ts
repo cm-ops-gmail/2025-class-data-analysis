@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
       !process.env.GOOGLE_PRIVATE_KEY
     ) {
-      console.error("Google service account credentials are not set in .env.local");
+      console.error("Google service account credentials are not set in .env");
       return NextResponse.json(
         {
           error:
