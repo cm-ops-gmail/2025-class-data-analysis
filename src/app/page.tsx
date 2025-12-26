@@ -288,7 +288,7 @@ export default function Home() {
                           </p>
                       </div>
                       <ScrollArea className="h-48 mt-4">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col items-start gap-1">
                           {summary.courses.map(course => (
                             <Badge key={course} variant="secondary">{course}</Badge>
                           ))}
@@ -326,7 +326,7 @@ export default function Home() {
                           </p>
                       </div>
                       <ScrollArea className="h-48 mt-4">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col items-start gap-1">
                           {summary.productTypes.map(pt => (
                             <Badge key={pt} variant="secondary">{pt}</Badge>
                           ))}
