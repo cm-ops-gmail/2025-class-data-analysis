@@ -79,6 +79,16 @@ interface DataTableProps {
   isLoading: boolean;
 }
 
+const parseNumericValue = (value: string | number | undefined | null): number => {
+  if (value === null || value === undefined) return 0;
+  const stringValue = String(value).trim();
+  if (stringValue === '' || stringValue === '-') return 0;
+  const cleanedValue = stringValue.replace(/,/g, '');
+  const numberValue = parseFloat(cleanedValue);
+  return isNaN(numberValue) ? 0 : numberValue;
+};
+
+
 export function DataTable({
   data,
   allColumns,
@@ -128,11 +138,17 @@ export function DataTable({
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
-        const numA = parseFloat(String(aValue).replace(/,/g, ''));
-        const numB = parseFloat(String(bValue).replace(/,/g, ''));
-
+        const numA = parseNumericValue(aValue);
+        const numB = parseNumericValue(bValue);
+        
         let valA, valB;
-        if (!isNaN(numA) && !isNaN(numB)) {
+
+        // Check if the original values look like numbers (even as strings)
+        // This is a heuristic. We assume if it parses to a non-zero number, it's numeric.
+        // And we ensure that we are not trying to sort something like a date string as a number
+        const isNumericSort = !isNaN(numA) && !isNaN(numB) && !/d{1,2}-\w{3}-\d{4}/.test(String(aValue)) && !/\d{1,2}:\d{2}/.test(String(aValue));
+
+        if (isNumericSort) {
           valA = numA;
           valB = numB;
         } else {

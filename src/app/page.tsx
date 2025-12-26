@@ -10,6 +10,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 
+const parseNumericValue = (value: string | number | undefined | null): number => {
+  if (value === null || value === undefined) return 0;
+  const stringValue = String(value).trim();
+  if (stringValue === '' || stringValue === '-') return 0;
+  const cleanedValue = stringValue.replace(/,/g, '');
+  const numberValue = parseFloat(cleanedValue);
+  return isNaN(numberValue) ? 0 : numberValue;
+};
+
+
 export default function Home() {
   const [data, setData] = useState<ClassEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,18 +139,18 @@ export default function Home() {
   const summary = useMemo(() => {
     const activeData = filteredData;
     const totalDuration = activeData.reduce((acc, item) => {
-      const duration = parseFloat(item.totalDurationMinutes);
-      return acc + (isNaN(duration) ? 0 : duration);
+      const duration = parseNumericValue(item.totalDurationMinutes);
+      return acc + duration;
     }, 0);
 
     const highestAttendance = activeData.reduce((max, item) => {
-        const attendance = parseInt(item.highestAttendance, 10);
-        return isNaN(attendance) ? max : Math.max(max, attendance);
+        const attendance = parseNumericValue(item.highestAttendance);
+        return Math.max(max, attendance);
     }, 0);
 
     const totalAttendance = activeData.reduce((acc, item) => {
-        const attendance = parseInt(item.highestAttendance, 10);
-        return acc + (isNaN(attendance) ? 0 : attendance);
+        const attendance = parseNumericValue(item.highestAttendance);
+        return acc + attendance;
     }, 0);
 
     const averageAttendance = activeData.length > 0
