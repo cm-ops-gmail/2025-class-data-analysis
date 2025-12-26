@@ -30,6 +30,7 @@ export default function Home() {
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
+  const [filteredData, setFilteredData] = useState<ClassEntry[]>([]);
 
 
   useEffect(() => {
@@ -99,8 +100,8 @@ export default function Home() {
     [data]
   );
 
-  const filteredData = useMemo(() => {
-    return data.filter(item => {
+  useEffect(() => {
+    const newFilteredData = data.filter(item => {
         if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
             return false;
         }
@@ -121,7 +122,8 @@ export default function Home() {
         }
         return true;
     });
-}, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
+    setFilteredData(newFilteredData);
+  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
 
 
   const summary = useMemo(() => {
