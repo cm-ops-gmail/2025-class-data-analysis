@@ -100,41 +100,29 @@ export default function Home() {
   );
 
   const filteredData = useMemo(() => {
-    let filtered = data;
+    return data.filter(item => {
+        if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
+            return false;
+        }
+        if (courseFilters.length > 0 && !courseFilters.includes(item.course)) {
+            return false;
+        }
+        if (teacher1Filters.length > 0 && !teacher1Filters.includes(item.teacher1)) {
+            return false;
+        }
+        if (subjectFilters.length > 0 && !subjectFilters.includes(item.subject)) {
+            return false;
+        }
+        if (globalFilter) {
+            const lowercasedFilter = globalFilter.toLowerCase();
+            return Object.values(item).some(value =>
+                String(value).toLowerCase().includes(lowercasedFilter)
+            );
+        }
+        return true;
+    });
+}, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
 
-    if (productTypeFilters.length > 0) {
-      filtered = filtered.filter((item) =>
-        productTypeFilters.includes(item.productType)
-      );
-    }
-    if (courseFilters.length > 0) {
-      filtered = filtered.filter((item) =>
-        courseFilters.includes(item.course)
-      );
-    }
-    if (teacher1Filters.length > 0) {
-      filtered = filtered.filter((item) =>
-        teacher1Filters.includes(item.teacher1)
-      );
-    }
-    if (subjectFilters.length > 0) {
-      filtered = filtered.filter((item) =>
-        subjectFilters.includes(item.subject)
-      );
-    }
-
-
-    if (globalFilter) {
-      const lowercasedFilter = globalFilter.toLowerCase();
-      filtered = filtered.filter((item) => {
-        return Object.values(item).some((value) =>
-          String(value).toLowerCase().includes(lowercasedFilter)
-        );
-      });
-    }
-
-    return filtered;
-  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
 
   const summary = useMemo(() => {
     const activeData = filteredData;
@@ -384,5 +372,3 @@ const allColumns = [
   { key: "classQACFeedback", header: "QAC Feedback" },
   { key: "remarks", header: "Remarks" }
 ];
-
-    
