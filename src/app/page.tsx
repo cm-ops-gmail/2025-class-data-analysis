@@ -9,6 +9,7 @@ import { BookOpen, User, BookCopy, Activity, Clock, TrendingUp, Users, Info } fr
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
   if (value === null || value === undefined) return 0;
@@ -289,8 +290,31 @@ export default function Home() {
                   <PopoverContent className="text-sm w-auto" side="top" align="end">
                     <div className="grid gap-2">
                       <div className="font-bold">Calculation</div>
-                      <div>
-                        Total Attendance: {summary.totalAttendance.toLocaleString()}
+                      <div className="flex items-center gap-1.5">
+                        Total Attendance:
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="link" size="sm" className="p-0 h-auto text-sm">{summary.totalAttendance.toLocaleString()}</Button>
+                          </PopoverTrigger>
+                          <PopoverContent side="bottom" align="center" className="w-48">
+                            <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Attendance Breakdown</h4>
+                                <p className="text-xs text-muted-foreground">
+                                    Sum of individual class attendance.
+                                </p>
+                            </div>
+                            <ScrollArea className="h-48 mt-4">
+                                <div className="space-y-1">
+                                    {filteredData.map((item, index) => (
+                                        <div key={index} className="text-xs flex justify-between">
+                                            <span>{item.topic || `Class ${item.id}`}:</span>
+                                            <span>{parseNumericValue(item.highestAttendance).toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <div>
                         Total Classes: {summary.filtered.toLocaleString()}
@@ -367,7 +391,7 @@ const allColumns = [
   { key: "annotatedSlideLink", header: "Annotated Slide" },
   { key: "classStopTimestamps", header: "Class Stop Timestamps" },
   { key: "startDelayMinutes", header: "Start Delay (min)" },
-  { key_:"viewCount10Min", header: "Views (10 Min)" },
+  { key: "viewCount10Min", header: "Views (10 Min)" },
   { key: "viewCount40_50Min", header: "Views (40-50 Min)" },
   { key: "viewCountBeforeEnd", header: "Views (End)" },
   { key: "classLink", header: "Class LINK" },
