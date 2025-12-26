@@ -128,14 +128,15 @@ export default function Home() {
   
   const summary = useMemo(() => {
     const isAnyFilterActive = productTypeFilter !== "all" || courseFilter !== "all" || teacher1Filter !== "all" || globalFilter !== "";
+    const sourceData = isAnyFilterActive ? filteredData : data;
     return {
       total: data.length,
       filtered: filteredData.length,
-      courses: new Set(filteredData.map(item => item.course).filter(Boolean)).size,
-      teachers: new Set(filteredData.map(item => item.teacher1).filter(Boolean)).size,
+      courses: new Set(sourceData.map(item => item.course).filter(Boolean)).size,
+      teachers: new Set(sourceData.map(item => item.teacher1).filter(Boolean)).size,
       isAnyFilterActive,
     }
-  }, [data.length, filteredData, productTypeFilter, courseFilter, teacher1Filter, globalFilter]);
+  }, [data, filteredData, productTypeFilter, courseFilter, teacher1Filter, globalFilter]);
 
 
   return (
@@ -155,29 +156,6 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="mb-8 rounded-lg border bg-card p-6 shadow-sm">
-          <div className="space-y-2 mb-4">
-            <h2 className="text-xl font-semibold">Import Your Data</h2>
-            <p className="text-sm text-muted-foreground">
-              Paste your public Google Sheet URL to get started.
-            </p>
-          </div>
-          <div className="flex w-full max-w-xl items-center space-x-2">
-            <Input
-              type="url"
-              placeholder="https://docs.google.com/spreadsheets/..."
-              aria-label="Google Sheet URL"
-              value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
-              disabled={isLoading}
-            />
-            <Button onClick={() => handleImport()} disabled={isLoading}>
-              {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-              Import
-            </Button>
-          </div>
-        </div>
-
         <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -188,7 +166,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                 {summary.isAnyFilterActive ? summary.filtered : summary.total}
+                 {summary.filtered}
               </div>
             </CardContent>
           </Card>
