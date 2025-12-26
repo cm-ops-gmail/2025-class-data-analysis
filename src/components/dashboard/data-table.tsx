@@ -114,6 +114,10 @@ export function DataTable({ initialData }: DataTableProps) {
   const [productTypeFilter, setProductTypeFilter] = React.useState("all");
   const [editingRow, setEditingRow] = React.useState<ClassEntry | null>(null);
 
+  React.useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
+
   const [columnVisibility, setColumnVisibility] = React.useState<
     Record<keyof ClassEntry, boolean>
   >(() => {
