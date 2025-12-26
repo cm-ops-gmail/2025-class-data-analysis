@@ -40,8 +40,6 @@ export default function Home() {
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
-  const [filteredData, setFilteredData] = useState<ClassEntry[]>([]);
-
 
   useEffect(() => {
     const handleImport = async (url: string) => {
@@ -110,8 +108,8 @@ export default function Home() {
     [data]
   );
 
-  useEffect(() => {
-    const newFilteredData = data.filter(item => {
+  const filteredData = useMemo(() => {
+    return data.filter(item => {
         if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
             return false;
         }
@@ -132,7 +130,6 @@ export default function Home() {
         }
         return true;
     });
-    setFilteredData(newFilteredData);
   }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
 
 
