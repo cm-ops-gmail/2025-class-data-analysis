@@ -5,11 +5,12 @@ import { DataTable } from "@/components/dashboard/data-table";
 import Logo from "@/components/logo";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, User, BookCopy, Activity, Clock, TrendingUp, Users, Info } from "lucide-react";
+import { BookOpen, User, BookCopy, Activity, Clock, TrendingUp, Users, Info, ChevronsUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
   if (value === null || value === undefined) return 0;
@@ -153,13 +154,16 @@ export default function Home() {
     const averageAttendance = activeData.length > 0
         ? Math.round(totalAttendance / activeData.length)
         : 0;
+        
+    const uniqueCourses = [...new Set(activeData.map(item => item.course).filter(Boolean))];
+    const uniqueProductTypes = [...new Set(activeData.map(item => item.productType).filter(Boolean))];
 
     return {
       total: data.length,
       filtered: activeData.length,
-      courses: new Set(activeData.map(item => item.course).filter(Boolean)).size,
+      courses: uniqueCourses,
       teachers: new Set(activeData.map(item => item.teacher1).filter(Boolean)).size,
-      productTypes: new Set(activeData.map(item => item.productType).filter(Boolean)).size,
+      productTypes: uniqueProductTypes,
       totalDuration: Math.round(totalDuration),
       highestAttendance: highestAttendance,
       topClass: topClass,
@@ -216,7 +220,31 @@ export default function Home() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.courses}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold">{summary.courses.length}</div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5">
+                        <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto max-w-[300px]" side="top" align="end">
+                       <div className="space-y-2">
+                          <h4 className="font-medium leading-none">Unique Courses</h4>
+                          <p className="text-xs text-muted-foreground">
+                              List of unique courses in the current view.
+                          </p>
+                      </div>
+                      <ScrollArea className="h-48 mt-4">
+                        <div className="flex flex-wrap gap-1">
+                          {summary.courses.map(course => (
+                            <Badge key={course} variant="secondary">{course}</Badge>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+              </div>
                <p className="text-xs text-muted-foreground">
                 in current view
               </p>
@@ -244,7 +272,31 @@ export default function Home() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.productTypes}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold">{summary.productTypes.length}</div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5">
+                        <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto" side="top" align="end">
+                      <div className="space-y-2">
+                          <h4 className="font-medium leading-none">Product Types</h4>
+                          <p className="text-xs text-muted-foreground">
+                              List of unique product types in the current view.
+                          </p>
+                      </div>
+                      <ScrollArea className="h-48 mt-4">
+                        <div className="flex flex-wrap gap-1">
+                          {summary.productTypes.map(pt => (
+                            <Badge key={pt} variant="secondary">{pt}</Badge>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+              </div>
                <p className="text-xs text-muted-foreground">
                 in current view
               </p>
