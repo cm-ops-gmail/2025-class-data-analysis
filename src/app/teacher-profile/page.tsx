@@ -108,67 +108,64 @@ export default function TeacherProfilePage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
-
-  const teacherStats = useMemo(() => {
-    const stats: { [key: string]: TeacherStats } = {};
-
+  
+  const allTeachers = useMemo(() => {
+    const teacherSet = new Set<string>();
     data.forEach(item => {
-      const teacherName = item.teacher1;
-      if (!teacherName) return;
+        if(item.teacher1) teacherSet.add(item.teacher1);
+    });
+    return Array.from(teacherSet).sort();
+  }, [data]);
 
-      if (!stats[teacherName]) {
-        stats[teacherName] = {
-          name: teacherName,
-          classCount: 0,
-          totalDuration: 0,
-          totalAverageAttendance: 0,
-          avgAttendance: 0,
-          highestPeakAttendance: 0,
-          classes: [],
-          highestAttendanceClass: null,
-          courseBreakdown: {},
-          uniqueCourses: [],
-          uniqueProductTypes: [],
-        };
-      }
+  const aggregatedStats = useMemo(() => {
+    if (selectedTeachers.length === 0) {
+      return null;
+    }
 
-      stats[teacherName].classCount += 1;
-      stats[teacherName].totalDuration += parseNumericValue(
-        item.totalDurationMinutes
-      );
-      stats[teacherName].totalAverageAttendance += parseNumericValue(
-        item.averageAttendance
-      );
-      stats[teacherName].classes.push(item);
-      
-      if(item.course) {
-        stats[teacherName].courseBreakdown[item.course] = (stats[teacherName].courseBreakdown[item.course] || 0) + 1;
-      }
+    const relevantClasses = data.filter(item => selectedTeachers.includes(item.teacher1));
 
-      const peakAttendance = parseNumericValue(item.highestAttendance);
-      if (peakAttendance > stats[teacherName].highestPeakAttendance) {
-        stats[teacherName].highestPeakAttendance = peakAttendance;
-        stats[teacherName].highestAttendanceClass = item;
-      }
+    if (relevantClasses.length === 0) return null;
+
+    const stats: TeacherStats = {
+      name: selectedTeachers.join(', '),
+      classCount: 0,
+      totalDuration: 0,
+      totalAverageAttendance: 0,
+      avgAttendance: 0,
+      highestPeakAttendance: 0,
+      classes: [],
+      highestAttendanceClass: null,
+      courseBreakdown: {},
+      uniqueCourses: [],
+      uniqueProductTypes: [],
+    };
+
+    relevantClasses.forEach(item => {
+        stats.classCount += 1;
+        stats.totalDuration += parseNumericValue(item.totalDurationMinutes);
+        stats.totalAverageAttendance += parseNumericValue(item.averageAttendance);
+        stats.classes.push(item);
+        
+        if (item.course) {
+            stats.courseBreakdown[item.course] = (stats.courseBreakdown[item.course] || 0) + 1;
+        }
+
+        const peakAttendance = parseNumericValue(item.highestAttendance);
+        if (peakAttendance > stats.highestPeakAttendance) {
+            stats.highestPeakAttendance = peakAttendance;
+            stats.highestAttendanceClass = item;
+        }
     });
 
-    Object.values(stats).forEach(t => {
-      t.avgAttendance =
-        t.classCount > 0
-          ? Math.round(t.totalAverageAttendance / t.classCount)
-          : 0;
-      t.uniqueCourses = [...new Set(t.classes.map(c => c.course).filter(Boolean))];
-      t.uniqueProductTypes = [...new Set(t.classes.map(c => c.productType).filter(Boolean))];
-    });
+    stats.avgAttendance =
+        stats.classCount > 0
+        ? Math.round(stats.totalAverageAttendance / stats.classCount)
+        : 0;
+    stats.uniqueCourses = [...new Set(stats.classes.map(c => c.course).filter(Boolean))];
+    stats.uniqueProductTypes = [...new Set(stats.classes.map(c => c.productType).filter(Boolean))];
 
     return stats;
-  }, [data]);
-  
-  const teachers = useMemo(() => Object.keys(teacherStats).sort(), [teacherStats]);
-  
-  const selectedTeacherStats = useMemo(() => {
-    return selectedTeachers.map(teacherName => teacherStats[teacherName]).filter(Boolean);
-  }, [selectedTeachers, teacherStats]);
+  }, [selectedTeachers, data]);
 
   const handleLogout = () => {
     localStorage.removeItem('dashboard_session');
@@ -196,17 +193,17 @@ export default function TeacherProfilePage() {
             Teacher Profile
           </h1>
           <p className="text-muted-foreground">
-            Select teachers to view and compare their performance statistics.
+            Select teachers to view their combined performance statistics.
           </p>
         </div>
 
         <div className="mb-8">
             {isLoading ? (
-                <Skeleton className="h-10 w-full md:w-[300px]" />
+                <Skeleton className="h-10 w-full md:w-[400px]" />
             ) : (
                 <MultiSelectFilter
                     title="Select teachers..."
-                    options={teachers.map(t => ({ value: t, label: t }))}
+                    options={allTeachers.map(t => ({ value: t, label: t }))}
                     selectedValues={selectedTeachers}
                     onSelectedValuesChange={setSelectedTeachers}
                     triggerClassName="w-full md:w-[400px]"
@@ -214,169 +211,165 @@ export default function TeacherProfilePage() {
             )}
         </div>
         
-        {isLoading && selectedTeachers.length === 0 && (
+        {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-36" />)}
             </div>
         )}
         
-        {selectedTeacherStats.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {selectedTeacherStats.map(currentTeacherStats => (
-                    <div key={currentTeacherStats.name} className="space-y-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-2xl">{currentTeacherStats.name}</CardTitle>
-                                <CardDescription>Performance Overview</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div className="flex items-center gap-4 rounded-lg border p-4">
-                                        <Award className="h-8 w-8 text-chart-1" />
-                                        <div>
-                                            <p className="text-muted-foreground">Classes Taught</p>
-                                            <p className="text-2xl font-bold">{currentTeacherStats.classCount}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 rounded-lg border p-4">
-                                        <Users className="h-8 w-8 text-chart-2" />
-                                        <div>
-                                            <p className="text-muted-foreground">Avg. Attendance</p>
-                                            <p className="text-2xl font-bold">{currentTeacherStats.avgAttendance.toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                     <div className="flex items-center gap-4 rounded-lg border p-4">
-                                        <BookOpen className="h-8 w-8 text-chart-3" />
-                                        <div>
-                                            <p className="text-muted-foreground">Courses Taught</p>
-                                            <p className="text-2xl font-bold">{currentTeacherStats.uniqueCourses.length}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 rounded-lg border p-4">
-                                        <Package className="h-8 w-8 text-chart-6" />
-                                        <div>
-                                            <p className="text-muted-foreground">Product Types</p>
-                                            <p className="text-2xl font-bold">{currentTeacherStats.uniqueProductTypes.length}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 rounded-lg border p-4 col-span-1 md:col-span-2">
-                                        <Star className="h-8 w-8 text-chart-5" />
-                                        <div className="flex-1 flex justify-between items-center">
-                                            <div>
-                                                <p className="text-muted-foreground">Highest Peak Attendance</p>
-                                                <p className="text-2xl font-bold">{currentTeacherStats.highestPeakAttendance.toLocaleString()}</p>
-                                            </div>
-                                            {currentTeacherStats.highestAttendanceClass && (
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto max-w-xs">
-                                                        <div className="space-y-1">
-                                                          <h4 className="font-semibold">Highest Attendance Class</h4>
-                                                          <p className="text-sm">
-                                                              {currentTeacherStats.highestAttendanceClass.topic}
-                                                          </p>
-                                                          <p className="text-xs text-muted-foreground">
-                                                              {currentTeacherStats.highestAttendanceClass.date}
-                                                          </p>
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 rounded-lg border p-4">
-                                        <Clock className="h-8 w-8 text-chart-4" />
-                                        <div>
-                                            <p className="text-muted-foreground">Total Duration</p>
-                                            <p className="text-2xl font-bold">{currentTeacherStats.totalDuration.toLocaleString()} min</p>
-                                        </div>
-                                    </div>
+        {aggregatedStats && (
+            <div className="space-y-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-2xl">{aggregatedStats.name}</CardTitle>
+                        <CardDescription>Aggregated Performance Overview</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                            <div className="flex items-center gap-4 rounded-lg border p-4">
+                                <Award className="h-8 w-8 text-chart-1" />
+                                <div>
+                                    <p className="text-muted-foreground">Total Classes Taught</p>
+                                    <p className="text-2xl font-bold">{aggregatedStats.classCount}</p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                        
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Course Breakdown</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead className="text-right">Classes Taught</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {Object.entries(currentTeacherStats.courseBreakdown).sort(([, a], [, b]) => b - a).map(([course, count]) => (
-                                            <TableRow key={course}>
-                                                <TableCell className="font-medium">{course}</TableCell>
-                                                <TableCell className="text-right font-bold">{count}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                    <TableFooter>
-                                        <TableRow>
-                                            <TableCell className="font-bold">Total</TableCell>
-                                            <TableCell className="text-right font-bold">{currentTeacherStats.classCount}</TableCell>
-                                        </TableRow>
-                                    </TableFooter>
-                                </Table>
-                            </CardContent>
-                        </Card>
-
-                        <div>
-                        <h2 className="text-2xl font-bold tracking-tight mb-4">
-                            Class History ({currentTeacherStats.classCount})
-                        </h2>
-                        <Card>
-                            <CardContent className="p-0">
-                            <ScrollArea className="h-[500px]">
-                                <Table>
+                            </div>
+                            <div className="flex items-center gap-4 rounded-lg border p-4">
+                                <Users className="h-8 w-8 text-chart-2" />
+                                <div>
+                                    <p className="text-muted-foreground">Combined Avg. Attendance</p>
+                                    <p className="text-2xl font-bold">{aggregatedStats.avgAttendance.toLocaleString()}</p>
+                                </div>
+                            </div>
+                             <div className="flex items-center gap-4 rounded-lg border p-4">
+                                <BookOpen className="h-8 w-8 text-chart-3" />
+                                <div>
+                                    <p className="text-muted-foreground">Unique Courses Taught</p>
+                                    <p className="text-2xl font-bold">{aggregatedStats.uniqueCourses.length}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 rounded-lg border p-4">
+                                <Package className="h-8 w-8 text-chart-6" />
+                                <div>
+                                    <p className="text-muted-foreground">Unique Product Types</p>
+                                    <p className="text-2xl font-bold">{aggregatedStats.uniqueProductTypes.length}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 rounded-lg border p-4 col-span-1 lg:col-span-1">
+                                <Star className="h-8 w-8 text-chart-5" />
+                                <div className="flex-1 flex justify-between items-center">
+                                    <div>
+                                        <p className="text-muted-foreground">Highest Peak Attendance</p>
+                                        <p className="text-2xl font-bold">{aggregatedStats.highestPeakAttendance.toLocaleString()}</p>
+                                    </div>
+                                    {aggregatedStats.highestAttendanceClass && (
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto max-w-xs">
+                                                <div className="space-y-1">
+                                                  <h4 className="font-semibold">Highest Attendance Class</h4>
+                                                  <p className="text-sm">
+                                                      {aggregatedStats.highestAttendanceClass.topic}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                      by {aggregatedStats.highestAttendanceClass.teacher1} on {aggregatedStats.highestAttendanceClass.date}
+                                                  </p>
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 rounded-lg border p-4">
+                                <Clock className="h-8 w-8 text-chart-4" />
+                                <div>
+                                    <p className="text-muted-foreground">Total Duration</p>
+                                    <p className="text-2xl font-bold">{aggregatedStats.totalDuration.toLocaleString()} min</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Course Breakdown</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
                                 <TableHeader>
                                     <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Topic</TableHead>
-                                    <TableHead>Course</TableHead>
-                                    <TableHead className="text-right">Avg. Attendance</TableHead>
-                                    <TableHead className="text-right">Peak Attendance</TableHead>
-                                    <TableHead className="text-right">Duration (min)</TableHead>
+                                        <TableHead>Course</TableHead>
+                                        <TableHead className="text-right">Classes Taught</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {currentTeacherStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
-                                    <TableRow key={c.id}>
-                                        <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
-                                        <TableCell className="font-medium max-w-xs truncate">{c.topic}</TableCell>
-                                        <TableCell>{c.course}</TableCell>
-                                        <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">{parseNumericValue(c.totalDurationMinutes).toLocaleString()}</TableCell>
-                                    </TableRow>
+                                    {Object.entries(aggregatedStats.courseBreakdown).sort(([, a], [, b]) => b - a).map(([course, count]) => (
+                                        <TableRow key={course}>
+                                            <TableCell className="font-medium">{course}</TableCell>
+                                            <TableCell className="text-right font-bold">{count}</TableCell>
+                                        </TableRow>
                                     ))}
                                 </TableBody>
-                                </Table>
-                            </ScrollArea>
-                            </CardContent>
-                        </Card>
-                        </div>
+                                <TableFooter>
+                                    <TableRow>
+                                        <TableCell className="font-bold">Total</TableCell>
+                                        <TableCell className="text-right font-bold">{aggregatedStats.classCount}</TableCell>
+                                    </TableRow>
+                                </TableFooter>
+                            </Table>
+                        </CardContent>
+                    </Card>
+
+                    <div>
+                    <h2 className="text-2xl font-bold tracking-tight mb-4">
+                        Class History ({aggregatedStats.classCount})
+                    </h2>
+                    <Card>
+                        <CardContent className="p-0">
+                        <ScrollArea className="h-[500px]">
+                            <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Teacher</TableHead>
+                                <TableHead>Topic</TableHead>
+                                <TableHead>Course</TableHead>
+                                <TableHead className="text-right">Avg. Attendance</TableHead>
+                                <TableHead className="text-right">Peak Attendance</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {aggregatedStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
+                                <TableRow key={c.id}>
+                                    <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
+                                    <TableCell>{c.teacher1}</TableCell>
+                                    <TableCell className="font-medium max-w-[200px] truncate">{c.topic}</TableCell>
+                                    <TableCell>{c.course}</TableCell>
+                                    <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                            </Table>
+                        </ScrollArea>
+                        </CardContent>
+                    </Card>
                     </div>
-                ))}
+                </div>
             </div>
         )}
         
-        {!isLoading && selectedTeachers.length === 0 && (
+        {!isLoading && !aggregatedStats && (
              <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12 h-96">
                 <UserCheck className="h-16 w-16 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold">Select a Teacher</h2>
-                <p className="text-muted-foreground mt-2">Choose one or more teachers from the dropdown above to see their detailed performance cards.</p>
+                <h2 className="text-xl font-semibold">Select Teachers</h2>
+                <p className="text-muted-foreground mt-2">Choose one or more teachers from the dropdown above to see their combined statistics.</p>
             </div>
         )}
       </main>
     </div>
   );
 }
-
-    
