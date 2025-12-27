@@ -146,10 +146,10 @@ export function TeacherPerformanceCharts({ data }: TeacherPerformanceChartsProps
             <CardTitle>{title}</CardTitle>
             <CardDescription>Top 25 Teachers Distribution</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 pb-0">
+          <CardContent className="flex-1 flex flex-col justify-center items-center pb-0">
             <ChartContainer
               config={chartConfig(data)}
-              className="mx-auto aspect-square max-h-[300px]"
+              className="mx-auto aspect-square w-full max-w-[300px]"
             >
               <PieChart>
                 <ChartTooltip
@@ -162,16 +162,13 @@ export function TeacherPerformanceCharts({ data }: TeacherPerformanceChartsProps
                   nameKey="name"
                   innerRadius={60}
                   strokeWidth={5}
-                >
-                </Pie>
+                />
+                <ChartLegend
+                  content={<ChartLegendContent nameKey="name" />}
+                  className="-translate-y-2 flex-wrap"
+                />
               </PieChart>
             </ChartContainer>
-          </CardContent>
-           <CardContent className="mt-4 flex flex-col gap-2 text-sm">
-                <ChartLegend
-                    content={<ChartLegendContent nameKey="name" />}
-                    className="-translate-y-2 flex-wrap"
-                />
           </CardContent>
         </Card>
       ))}
