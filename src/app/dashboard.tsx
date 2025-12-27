@@ -32,8 +32,9 @@ import {
 import { TeacherPerformanceCharts } from "@/components/dashboard/teacher-performance-charts";
 import Navbar from "@/components/navbar";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
@@ -113,8 +114,10 @@ export default function Dashboard() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [tempStartDate, setTempStartDate] = useState("");
-  const [tempEndDate, setTempEndDate] = useState("");
+  const [tempStartDate, setTempStartDate] = useState<Date | undefined>();
+  const [tempEndDate, setTempEndDate] = useState<Date | undefined>();
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
+  const [isEndDateOpen, setIsEndDateOpen] = useState(false);
   const [productTypeFilters, setProductTypeFilters] = useState<string[]>([]);
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
@@ -291,8 +294,8 @@ export default function Dashboard() {
     setGlobalFilter("");
     setStartDate(undefined);
     setEndDate(undefined);
-    setTempStartDate("");
-    setTempEndDate("");
+    setTempStartDate(undefined);
+    setTempEndDate(undefined);
     setProductTypeFilters([]);
     setCourseFilters([]);
     setTeacher1Filters([]);
@@ -300,16 +303,10 @@ export default function Dashboard() {
   };
 
   const applyDateFilter = () => {
-    if (tempStartDate) {
-      setStartDate(new Date(tempStartDate));
-    } else {
-      setStartDate(undefined);
-    }
-    if (tempEndDate) {
-      setEndDate(new Date(tempEndDate));
-    } else {
-      setEndDate(undefined);
-    }
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
+    setIsStartDateOpen(false);
+    setIsEndDateOpen(false);
   };
 
   const hasActiveFilters =
@@ -376,7 +373,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Date Range:</span>
                   <Badge variant="secondary" className="pl-2">
-                    {startDate ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '...'} to {endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '...'}
+                    {startDate ? format(startDate, 'MMM dd, yyyy') : '...'} to {endDate ? format(endDate, 'MMM dd, yyyy') : '...'}
                   </Badge>
                 </div>
               )}
@@ -677,37 +674,55 @@ export default function Dashboard() {
             {/* Date Filter Row */}
             <div className="flex flex-col gap-4 md:flex-row md:items-end">
               <div className="grid w-full md:w-auto gap-1.5">
-                <Label htmlFor="start-date" className="text-sm font-medium">Start Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="start-date"
-                    type="date"
-                    value={tempStartDate}
-                    onChange={(e) => setTempStartDate(e.target.value)}
-                    className="pl-10 w-full md:w-[200px]"
-                  />
-                </div>
+                <Label className="text-sm font-medium">Start Date</Label>
+                <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full md:w-[240px] justify-start text-left font-normal ${!tempStartDate && "text-muted-foreground"}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {tempStartDate ? format(tempStartDate, "PPP") : "Pick a start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={tempStartDate}
+                      onSelect={setTempStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid w-full md:w-auto gap-1.5">
-                <Label htmlFor="end-date" className="text-sm font-medium">End Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={tempEndDate}
-                    onChange={(e) => setTempEndDate(e.target.value)}
-                    className="pl-10 w-full md:w-[200px]"
-                  />
-                </div>
+                <Label className="text-sm font-medium">End Date</Label>
+                <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full md:w-[240px] justify-start text-left font-normal ${!tempEndDate && "text-muted-foreground"}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {tempEndDate ? format(tempEndDate, "PPP") : "Pick an end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={tempEndDate}
+                      onSelect={setTempEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {(tempStartDate || tempEndDate) && (
                 <Button
                   onClick={applyDateFilter}
                   className="h-10 w-full md:w-auto"
                 >
-                  Apply
+                  Apply Date Filter
                 </Button>
               )}
             </div>
