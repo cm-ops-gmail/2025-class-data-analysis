@@ -149,7 +149,7 @@ export function TeacherPerformanceCharts({ data }: TeacherPerformanceChartsProps
   ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       {chartCards.map(({ title, data }) => (
         <Card key={title} className="flex flex-col">
           <CardHeader>
