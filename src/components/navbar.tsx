@@ -1,6 +1,10 @@
+'use client';
+
 import React from 'react';
-import Image from 'next/image';
 import Logo from './logo';
+import { Button } from './ui/button';
+import Link from 'next/link';
+import { User } from 'lucide-react';
 
 interface NavbarProps {
     children?: React.ReactNode;
@@ -14,6 +18,12 @@ const Navbar = ({ children }: NavbarProps) => {
           <Logo />
         </div>
         <div className="flex items-center gap-4">
+           <Link href="/teacher-profile" passHref>
+             <Button variant="ghost">
+                <User className="mr-2 h-4 w-4" />
+                Teacher Profile
+             </Button>
+           </Link>
           {children}
         </div>
       </div>
