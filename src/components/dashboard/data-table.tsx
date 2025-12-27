@@ -110,65 +110,85 @@ export function DataTable({
   };
 
   return (
-    <ScrollArea className="h-[500px] whitespace-nowrap rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {visibleColumns.map((col) => (
-              <TableHead key={col.key}>
-                {col.sortable ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => requestSort(col.key as keyof ClassEntry)}
-                    className="-ml-4"
-                  >
-                    {col.header}
-                    {sortConfig?.key === col.key ? (
-                      sortConfig.direction === "ascending" ? (
-                        <ChevronUp className="ml-2 h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="ml-2 h-4 w-4" />
-                      )
-                    ) : (
-                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-30" />
-                    )}
-                  </Button>
-                ) : (
-                  col.header
-                )}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading ? (
+    <div className="relative">
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: white;
+          border-radius: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #e0e0e0;
+        }
+      `}</style>
+      <ScrollArea className="h-[500px] w-full rounded-md border custom-scrollbar">
+        <div className="w-max min-w-full">
+          <Table>
+            <TableHeader>
               <TableRow>
-                  <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
-                      <Loader className="mx-auto h-8 w-8 animate-spin" />
-                  </TableCell>
-              </TableRow>
-          ) : sortedData.length > 0 ? (
-            sortedData.map((row) => (
-              <TableRow key={row.id}>
                 {visibleColumns.map((col) => (
-                  <TableCell key={col.key} className="max-w-[250px] truncate whitespace-nowrap">
-                    {String(row[col.key] ?? '')}
-                  </TableCell>
+                  <TableHead key={col.key}>
+                    {col.sortable ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort(col.key as keyof ClassEntry)}
+                        className="-ml-4"
+                      >
+                        {col.header}
+                        {sortConfig?.key === col.key ? (
+                          sortConfig.direction === "ascending" ? (
+                            <ChevronUp className="ml-2 h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                          )
+                        ) : (
+                          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-30" />
+                        )}
+                      </Button>
+                    ) : (
+                      col.header
+                    )}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={visibleColumns.length}
-                className="h-24 text-center"
-              >
-                No results found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                  <TableRow>
+                      <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
+                          <Loader className="mx-auto h-8 w-8 animate-spin" />
+                      </TableCell>
+                  </TableRow>
+              ) : sortedData.length > 0 ? (
+                sortedData.map((row) => (
+                  <TableRow key={row.id}>
+                    {visibleColumns.map((col) => (
+                      <TableCell key={col.key} className="max-w-[250px] truncate whitespace-nowrap">
+                        {String(row[col.key] ?? '')}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={visibleColumns.length}
+                    className="h-24 text-center"
+                  >
+                    No results found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
