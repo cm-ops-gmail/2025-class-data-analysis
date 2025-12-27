@@ -84,10 +84,10 @@ export function TopTeachers({ data }: TopTeachersProps) {
 
     const statsArray = Object.values(teacherStats);
     
-    const byClassCount = [...statsArray].sort((a, b) => b.classCount - a.classCount).slice(0, 3);
-    const byAverageAttendance = [...statsArray].sort((a, b) => b.avgAttendance - a.avgAttendance).slice(0, 3);
-    const byHighestAttendance = [...statsArray].sort((a, b) => b.highestPeakAttendance - a.highestPeakAttendance).slice(0, 3);
-    const byTotalDuration = [...statsArray].sort((a, b) => b.totalDuration - a.totalDuration).slice(0, 3);
+    const byClassCount = [...statsArray].sort((a, b) => b.classCount - a.classCount).slice(0, 5);
+    const byAverageAttendance = [...statsArray].sort((a, b) => b.avgAttendance - a.avgAttendance).slice(0, 5);
+    const byHighestAttendance = [...statsArray].sort((a, b) => b.highestPeakAttendance - a.highestPeakAttendance).slice(0, 5);
+    const byTotalDuration = [...statsArray].sort((a, b) => b.totalDuration - a.totalDuration).slice(0, 5);
 
     return { 
       topTeachers: { byClassCount, byAverageAttendance, byHighestAttendance, byTotalDuration },
