@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { DataTable } from "@/components/dashboard/data-table";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X, LogOut } from "lucide-react";
+import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X, LogOut, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -32,6 +32,8 @@ import {
 import { TeacherPerformanceCharts } from "@/components/dashboard/teacher-performance-charts";
 import Navbar from "@/components/navbar";
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
@@ -41,6 +43,55 @@ const parseNumericValue = (value: string | number | undefined | null): number =>
   const cleanedValue = stringValue.replace(/,/g, '');
   const numberValue = parseFloat(cleanedValue);
   return isNaN(numberValue) ? 0 : numberValue;
+};
+
+const parseDateString = (dateStr: string): Date | null => {
+  if (!dateStr) return null;
+  
+  // Try parsing different date formats
+  // Format: "Wednesday, January 1, 2025"
+  const formats = [
+    /^(\w+),\s+(\w+)\s+(\d+),\s+(\d+)$/,  // Wednesday, January 1, 2025
+    /^(\d+)-(\w+)-(\d+)$/,                 // 1-Jan-2025
+    /^(\d{4})-(\d{2})-(\d{2})$/,           // 2025-01-01
+  ];
+  
+  const monthMap: { [key: string]: number } = {
+    'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
+    'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11,
+    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+  };
+  
+  // Try format: "Wednesday, January 1, 2025"
+  const match1 = dateStr.match(formats[0]);
+  if (match1) {
+    const [, , month, day, year] = match1;
+    const monthNum = monthMap[month];
+    if (monthNum !== undefined) {
+      return new Date(parseInt(year), monthNum, parseInt(day));
+    }
+  }
+  
+  // Try format: "1-Jan-2025"
+  const match2 = dateStr.match(formats[1]);
+  if (match2) {
+    const [, day, month, year] = match2;
+    const monthNum = monthMap[month];
+    if (monthNum !== undefined) {
+      return new Date(parseInt(year), monthNum, parseInt(day));
+    }
+  }
+  
+  // Try ISO format: "2025-01-01"
+  const match3 = dateStr.match(formats[2]);
+  if (match3) {
+    return new Date(dateStr);
+  }
+  
+  // Fallback to Date parsing
+  const parsed = new Date(dateStr);
+  return isNaN(parsed.getTime()) ? null : parsed;
 };
 
 const monthMap: { [key: string]: number } = {
@@ -59,8 +110,9 @@ export default function Dashboard() {
   const { toast } = useToast();
   const router = useRouter();
 
-
   const [globalFilter, setGlobalFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [productTypeFilters, setProductTypeFilters] = useState<string[]>([]);
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
@@ -148,6 +200,24 @@ export default function Dashboard() {
 
   const filteredData = useMemo(() => {
     return data.filter(item => {
+      // Date Filter
+      if (startDate || endDate) {
+        const itemDate = parseDateString(item.date);
+        if (!itemDate) return false;
+        
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (itemDate < start) return false;
+        }
+        
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (itemDate > end) return false;
+        }
+      }
+      
       // Other Filters
       if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
           return false;
@@ -169,7 +239,7 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
+  }, [data, globalFilter, startDate, endDate, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
 
 
   const summary = useMemo(() => {
@@ -217,6 +287,8 @@ export default function Dashboard() {
   
   const clearAllFilters = () => {
     setGlobalFilter("");
+    setStartDate("");
+    setEndDate("");
     setProductTypeFilters([]);
     setCourseFilters([]);
     setTeacher1Filters([]);
@@ -224,6 +296,8 @@ export default function Dashboard() {
   };
 
   const hasActiveFilters =
+    startDate !== "" ||
+    endDate !== "" ||
     productTypeFilters.length > 0 ||
     courseFilters.length > 0 ||
     teacher1Filters.length > 0 ||
@@ -243,7 +317,7 @@ export default function Dashboard() {
     return result.trim() || '0 min';
   };
 
-  const isFiltered = productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
+  const isFiltered = startDate !== "" || endDate !== "" || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
 
   const handleLogout = () => {
     localStorage.removeItem("dashboard_session");
@@ -281,6 +355,14 @@ export default function Dashboard() {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
+              {(startDate || endDate) && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Date Range:</span>
+                  <Badge variant="secondary" className="pl-2">
+                    {startDate || '...'} to {endDate || '...'}
+                  </Badge>
+                </div>
+              )}
               {productTypeFilters.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Product Types:</span>
@@ -575,6 +657,37 @@ export default function Dashboard() {
             Advanced Filtering & Column Selection
           </h2>
           <div className="flex flex-col gap-4">
+            {/* Date Filter Row */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-end">
+              <div className="grid w-full md:w-auto gap-1.5">
+                <Label htmlFor="start-date" className="text-sm font-medium">Start Date</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="pl-10 w-full md:w-[200px]"
+                  />
+                </div>
+              </div>
+              <div className="grid w-full md:w-auto gap-1.5">
+                <Label htmlFor="end-date" className="text-sm font-medium">End Date</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="pl-10 w-full md:w-[200px]"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Other Filters Row */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:flex-wrap">
               <MultiSelectFilter
                 title="Product Types"
@@ -615,7 +728,6 @@ export default function Dashboard() {
                   <X className="ml-2 h-4 w-4" />
                 </Button>
               )}
-
 
               <div className="flex-grow" />
               <DropdownMenu>
@@ -686,7 +798,6 @@ export default function Dashboard() {
           </h2>
           <TeacherPerformanceCharts data={data} />
         </section>
-
 
       </main>
       <footer className="border-t">
