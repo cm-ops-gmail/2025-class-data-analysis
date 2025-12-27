@@ -165,77 +165,87 @@ export function TeacherPerformanceCharts({ data }: TeacherPerformanceChartsProps
 
   const classCountData = processChartData(teacherStats, 'classCount');
   const avgAttendanceData = processChartData(teacherStats, 'avgAttendance');
-  const highestAttendanceData = processChartData(teacherStats, 'highestPeakAttendance');
   const totalDurationData = processChartData(teacherStats, 'totalDuration');
 
   if (!data || data.length === 0) {
     return null;
   }
   
-  const chartCards = [
+  const allChartCards = [
     { title: "Classes Taught", data: classCountData, total: totals.classCount, metricLabel: 'Classes' },
     { title: "Average Attendance", data: avgAttendanceData, total: totals.avgAttendance, metricLabel: 'Avg. Attendance' },
-    { title: "Peak Attendance", data: highestAttendanceData, total: totals.highestPeakAttendance, metricLabel: 'Peak Attendance' },
+    { title: "Peak Attendance", data: [], total: totals.highestPeakAttendance, metricLabel: 'Peak Attendance' },
     { title: "Total Duration (min)", data: totalDurationData, total: totals.totalDuration, metricLabel: 'Duration (min)' },
   ];
 
+  const chartCards = allChartCards.filter(chart => chart.title !== 'Peak Attendance');
+
   return (
     <div className="grid grid-cols-1 gap-6">
-      {chartCards.map(({ title, data, total, metricLabel }) => (
-        <Card key={title} className="flex flex-col">
-          <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            <CardDescription>Top 30 Teachers Distribution</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 pl-0 pr-6">
-            <ChartContainer
-              config={chartConfig(data)}
-              className="h-[1200px] w-full"
-            >
-              <BarChart
-                accessibilityLayer
-                data={data}
-                layout="vertical"
-                margin={{
-                  left: 10,
-                  right: 30,
-                }}
+      {chartCards.map(({ title, data, total, metricLabel }) => {
+        const top30Value = data.filter(d => d.name !== 'Others').reduce((acc, d) => acc + d.value, 0);
+        const othersValue = data.find(d => d.name === 'Others')?.value ?? 0;
+        const top30Percent = total > 0 ? ((top30Value / total) * 100).toFixed(1) : 0;
+        const othersPercent = total > 0 ? ((othersValue / total) * 100).toFixed(1) : 0;
+        
+        return (
+          <Card key={title} className="flex flex-col">
+            <CardHeader>
+              <CardTitle>{title} ({total.toLocaleString()})</CardTitle>
+              <CardDescription>
+                Top 30 teachers contribute {top30Percent}% of the total. Others contribute {othersPercent}%.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 pl-0 pr-6">
+              <ChartContainer
+                config={chartConfig(data)}
+                className="h-[1200px] w-full"
               >
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={10}
-                  width={150}
-                  className="text-xs"
-                />
-                <XAxis dataKey="value" type="number" hide />
-                <ChartTooltip
-                  cursor={{ fill: 'hsl(var(--muted))' }}
-                  content={<CustomTooltipContent total={total} metricLabel={metricLabel} />}
-                />
-                <Bar
-                  dataKey="value"
-                  radius={5}
-                  barSize={20}
+                <BarChart
+                  accessibilityLayer
+                  data={data}
+                  layout="vertical"
+                  margin={{
+                    left: 10,
+                    right: 30,
+                  }}
                 >
-                   {data.map((entry, index) => (
-                    <LabelList
-                      key={`label-${index}`}
-                      dataKey="value"
-                      position="right"
-                      offset={8}
-                      className="fill-foreground text-xs"
-                      formatter={(value: number) => value.toLocaleString()}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      ))}
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={10}
+                    width={150}
+                    className="text-xs"
+                  />
+                  <XAxis dataKey="value" type="number" hide />
+                  <ChartTooltip
+                    cursor={{ fill: 'hsl(var(--muted))' }}
+                    content={<CustomTooltipContent total={total} metricLabel={metricLabel} />}
+                  />
+                  <Bar
+                    dataKey="value"
+                    radius={5}
+                    barSize={20}
+                  >
+                     {data.map((entry, index) => (
+                      <LabelList
+                        key={`label-${index}`}
+                        dataKey="value"
+                        position="right"
+                        offset={8}
+                        className="fill-foreground text-xs"
+                        formatter={(value: number) => value.toLocaleString()}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
