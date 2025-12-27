@@ -484,7 +484,8 @@ export default function TeacherProfilePage() {
                     <Card>
                         <CardContent className="p-0">
                         <ScrollArea className="h-[500px]">
-                            <Table>
+                          <div className="overflow-x-auto">
+                            <Table className="whitespace-nowrap">
                             <TableHeader>
                                 <TableRow>
                                 <TableHead>Date</TableHead>
@@ -508,6 +509,7 @@ export default function TeacherProfilePage() {
                                 ))}
                             </TableBody>
                             </Table>
+                            </div>
                         </ScrollArea>
                         </CardContent>
                     </Card>
