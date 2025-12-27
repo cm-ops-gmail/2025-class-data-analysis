@@ -153,7 +153,7 @@ export function TopTeachers({ data }: TopTeachersProps) {
 
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2">
       <Card className="border-chart-1/50 hover:border-chart-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Most Classes Taught</CardTitle>
