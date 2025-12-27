@@ -151,7 +151,7 @@ export function DataTable({
             sortedData.map((row) => (
               <TableRow key={row.id}>
                 {visibleColumns.map((col) => (
-                  <TableCell key={col.key} className="max-w-[250px] truncate">
+                  <TableCell key={col.key} className="max-w-[250px] truncate whitespace-nowrap">
                     {String(row[col.key] ?? '')}
                   </TableCell>
                 ))}
