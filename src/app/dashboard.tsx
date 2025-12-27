@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import { TopTeachers } from "@/components/dashboard/top-teachers";
 import { Separator } from "@/components/ui/separator";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
+import { Calendar } from "@/components/ui/calendar";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -65,6 +66,10 @@ export default function Dashboard() {
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
+
+  // Date Filtering
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   const [columnVisibility, setColumnVisibility] = React.useState<
     Record<keyof ClassEntry, boolean>
@@ -148,6 +153,12 @@ export default function Dashboard() {
 
   const filteredData = useMemo(() => {
     return data.filter(item => {
+      // Date Filtering
+      if (startDate || endDate) {
+        const itemDate = new Date(item.date);
+        if (startDate && itemDate < startDate) return false;
+        if (endDate && itemDate > endDate) return false;
+      }
       // Other Filters
       if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
           return false;
@@ -169,7 +180,7 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
+  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters, startDate, endDate]);
 
 
   const summary = useMemo(() => {
@@ -604,6 +615,23 @@ export default function Dashboard() {
                 onSelectedValuesChange={setSubjectFilters}
                 triggerClassName="w-full md:w-auto"
               />
+
+              {/* Date Range Filtering */}
+              <div className="flex flex-col md:flex-row gap-2 items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Start Date:</span>
+                  <Calendar selected={startDate} onSelect={setStartDate} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">End Date:</span>
+                  <Calendar selected={endDate} onSelect={setEndDate} />
+                </div>
+                {(startDate || endDate) && (
+                  <Button size="sm" variant="outline" onClick={() => { setStartDate(undefined); setEndDate(undefined); }}>
+                    Clear Date
+                  </Button>
+                )}
+              </div>
 
               {isFiltered && (
                 <Button
