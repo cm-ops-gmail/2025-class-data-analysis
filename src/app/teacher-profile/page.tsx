@@ -12,13 +12,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { useRouter } from 'next/navigation';
@@ -26,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MultiSelectFilter } from '@/components/dashboard/multi-select-filter';
 
 const parseNumericValue = (
   value: string | number | undefined | null
@@ -38,6 +32,10 @@ const parseNumericValue = (
   return isNaN(numberValue) ? 0 : numberValue;
 };
 
+type CourseBreakdown = {
+  [courseName: string]: number;
+}
+
 type TeacherStats = {
   name: string;
   classCount: number;
@@ -47,6 +45,7 @@ type TeacherStats = {
   highestPeakAttendance: number;
   classes: ClassEntry[];
   highestAttendanceClass: ClassEntry | null;
+  courseBreakdown: CourseBreakdown;
 };
 
 export default function TeacherProfilePage() {
@@ -54,7 +53,7 @@ export default function TeacherProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
-  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
+  const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
 
   useEffect(() => {
     const session = localStorage.getItem('dashboard_session');
@@ -125,6 +124,7 @@ export default function TeacherProfilePage() {
           highestPeakAttendance: 0,
           classes: [],
           highestAttendanceClass: null,
+          courseBreakdown: {},
         };
       }
 
@@ -136,6 +136,10 @@ export default function TeacherProfilePage() {
         item.averageAttendance
       );
       stats[teacherName].classes.push(item);
+      
+      if(item.course) {
+        stats[teacherName].courseBreakdown[item.course] = (stats[teacherName].courseBreakdown[item.course] || 0) + 1;
+      }
 
       const peakAttendance = parseNumericValue(item.highestAttendance);
       if (peakAttendance > stats[teacherName].highestPeakAttendance) {
@@ -156,7 +160,9 @@ export default function TeacherProfilePage() {
   
   const teachers = useMemo(() => Object.keys(teacherStats).sort(), [teacherStats]);
   
-  const currentTeacherStats = selectedTeacher ? teacherStats[selectedTeacher] : null;
+  const selectedTeacherStats = useMemo(() => {
+    return selectedTeachers.map(teacherName => teacherStats[teacherName]).filter(Boolean);
+  }, [selectedTeachers, teacherStats]);
 
   const handleLogout = () => {
     localStorage.removeItem('dashboard_session');
@@ -166,7 +172,7 @@ export default function TeacherProfilePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Navbar>
-        <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+        <Button variant="ghost" onClick={() => router.push('/')}>
             Home
         </Button>
         <Button
@@ -184,127 +190,145 @@ export default function TeacherProfilePage() {
             Teacher Profile
           </h1>
           <p className="text-muted-foreground">
-            Select a teacher to view their performance statistics.
+            Select teachers to view and compare their performance statistics.
           </p>
         </div>
 
         <div className="mb-8">
-          <Select onValueChange={setSelectedTeacher} value={selectedTeacher || ''}>
-            <SelectTrigger className="w-full md:w-[300px]">
-              <SelectValue placeholder="Select a teacher..." />
-            </SelectTrigger>
-            <SelectContent>
-                {isLoading ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">Loading teachers...</div>
-                ) : (
-                    <ScrollArea className="h-72">
-                        {teachers.map(teacher => (
-                            <SelectItem key={teacher} value={teacher}>
-                                {teacher}
-                            </SelectItem>
-                        ))}
-                    </ScrollArea>
-                )}
-            </SelectContent>
-          </Select>
+            {isLoading ? (
+                <Skeleton className="h-10 w-full md:w-[300px]" />
+            ) : (
+                <MultiSelectFilter
+                    title="Select teachers..."
+                    options={teachers.map(t => ({ value: t, label: t }))}
+                    selectedValues={selectedTeachers}
+                    onSelectedValuesChange={setSelectedTeachers}
+                    triggerClassName="w-full md:w-[400px]"
+                />
+            )}
         </div>
-
-        {isLoading && !currentTeacherStats && (
+        
+        {isLoading && selectedTeachers.length === 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-36" />)}
             </div>
         )}
         
-        {currentTeacherStats && (
-            <div className="space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-2xl">{currentTeacherStats.name}</CardTitle>
-                        <CardDescription>Performance Overview</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                            <div className="flex items-center gap-4 rounded-lg border p-4">
-                                <Award className="h-8 w-8 text-chart-1" />
-                                <div>
-                                    <p className="text-muted-foreground">Classes Taught</p>
-                                    <p className="text-2xl font-bold">{currentTeacherStats.classCount}</p>
+        {selectedTeacherStats.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {selectedTeacherStats.map(currentTeacherStats => (
+                    <div key={currentTeacherStats.name} className="space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-2xl">{currentTeacherStats.name}</CardTitle>
+                                <CardDescription>Performance Overview</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <div className="flex items-center gap-4 rounded-lg border p-4">
+                                        <Award className="h-8 w-8 text-chart-1" />
+                                        <div>
+                                            <p className="text-muted-foreground">Classes Taught</p>
+                                            <p className="text-2xl font-bold">{currentTeacherStats.classCount}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 rounded-lg border p-4">
+                                        <Users className="h-8 w-8 text-chart-2" />
+                                        <div>
+                                            <p className="text-muted-foreground">Avg. Attendance</p>
+                                            <p className="text-2xl font-bold">{currentTeacherStats.avgAttendance.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 rounded-lg border p-4">
+                                        <Star className="h-8 w-8 text-chart-5" />
+                                        <div>
+                                            <p className="text-muted-foreground">Highest Peak</p>
+                                            <p className="text-2xl font-bold">{currentTeacherStats.highestPeakAttendance.toLocaleString()}</p>
+                                            {currentTeacherStats.highestAttendanceClass && <p className="text-xs truncate text-muted-foreground" title={currentTeacherStats.highestAttendanceClass.topic}>
+                                                in "{currentTeacherStats.highestAttendanceClass.topic}"
+                                            </p>}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 rounded-lg border p-4">
+                                        <Clock className="h-8 w-8 text-chart-4" />
+                                        <div>
+                                            <p className="text-muted-foreground">Total Duration</p>
+                                            <p className="text-2xl font-bold">{currentTeacherStats.totalDuration.toLocaleString()} min</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4">
-                                <Users className="h-8 w-8 text-chart-2" />
-                                <div>
-                                    <p className="text-muted-foreground">Avg. Attendance</p>
-                                    <p className="text-2xl font-bold">{currentTeacherStats.avgAttendance.toLocaleString()}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4">
-                                <Star className="h-8 w-8 text-chart-5" />
-                                <div>
-                                    <p className="text-muted-foreground">Highest Peak</p>
-                                    <p className="text-2xl font-bold">{currentTeacherStats.highestPeakAttendance.toLocaleString()}</p>
-                                    {currentTeacherStats.highestAttendanceClass && <p className="text-xs truncate text-muted-foreground" title={currentTeacherStats.highestAttendanceClass.topic}>
-                                        in "{currentTeacherStats.highestAttendanceClass.topic}"
-                                    </p>}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4">
-                                <Clock className="h-8 w-8 text-chart-4" />
-                                <div>
-                                    <p className="text-muted-foreground">Total Duration</p>
-                                    <p className="text-2xl font-bold">{currentTeacherStats.totalDuration.toLocaleString()} min</p>
-                                </div>
-                            </div>
+                            </CardContent>
+                        </Card>
+                        
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Course Breakdown</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Course</TableHead>
+                                            <TableHead className="text-right">Classes Taught</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {Object.entries(currentTeacherStats.courseBreakdown).sort(([, a], [, b]) => b - a).map(([course, count]) => (
+                                            <TableRow key={course}>
+                                                <TableCell className="font-medium">{course}</TableCell>
+                                                <TableCell className="text-right font-bold">{count}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <div>
+                        <h2 className="text-2xl font-bold tracking-tight mb-4">
+                            Class History ({currentTeacherStats.classCount})
+                        </h2>
+                        <Card>
+                            <CardContent className="p-0">
+                            <ScrollArea className="h-[500px]">
+                                <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Topic</TableHead>
+                                    <TableHead>Course</TableHead>
+                                    <TableHead className="text-right">Avg. Attendance</TableHead>
+                                    <TableHead className="text-right">Peak Attendance</TableHead>
+                                    <TableHead className="text-right">Duration (min)</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentTeacherStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
+                                    <TableRow key={c.id}>
+                                        <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
+                                        <TableCell className="font-medium max-w-xs truncate">{c.topic}</TableCell>
+                                        <TableCell>{c.course}</TableCell>
+                                        <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
+                                        <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
+                                        <TableCell className="text-right">{parseNumericValue(c.totalDurationMinutes).toLocaleString()}</TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                                </Table>
+                            </ScrollArea>
+                            </CardContent>
+                        </Card>
                         </div>
-                    </CardContent>
-                </Card>
-                
-                <Separator />
-
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight mb-4">
-                    Class History ({currentTeacherStats.classCount})
-                  </h2>
-                  <Card>
-                    <CardContent className="p-0">
-                      <ScrollArea className="h-[500px]">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Topic</TableHead>
-                              <TableHead>Course</TableHead>
-                              <TableHead className="text-right">Avg. Attendance</TableHead>
-                              <TableHead className="text-right">Peak Attendance</TableHead>
-                              <TableHead className="text-right">Duration (min)</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {currentTeacherStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
-                              <TableRow key={c.id}>
-                                <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
-                                <TableCell className="font-medium max-w-xs truncate">{c.topic}</TableCell>
-                                <TableCell>{c.course}</TableCell>
-                                <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
-                                <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
-                                <TableCell className="text-right">{parseNumericValue(c.totalDurationMinutes).toLocaleString()}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                </div>
-
+                    </div>
+                ))}
             </div>
         )}
         
-        {!isLoading && !selectedTeacher && (
+        {!isLoading && selectedTeachers.length === 0 && (
              <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12 h-96">
                 <UserCheck className="h-16 w-16 text-muted-foreground mb-4" />
                 <h2 className="text-xl font-semibold">Select a Teacher</h2>
-                <p className="text-muted-foreground mt-2">Choose a teacher from the dropdown above to see their detailed performance card.</p>
+                <p className="text-muted-foreground mt-2">Choose one or more teachers from the dropdown above to see their detailed performance cards.</p>
             </div>
         )}
       </main>
