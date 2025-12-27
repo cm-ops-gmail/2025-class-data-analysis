@@ -32,8 +32,9 @@ import {
 import { TeacherPerformanceCharts } from "@/components/dashboard/teacher-performance-charts";
 import Navbar from "@/components/navbar";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
@@ -111,8 +112,8 @@ export default function Dashboard() {
   const router = useRouter();
 
   const [globalFilter, setGlobalFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const [productTypeFilters, setProductTypeFilters] = useState<string[]>([]);
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
@@ -287,8 +288,8 @@ export default function Dashboard() {
   
   const clearAllFilters = () => {
     setGlobalFilter("");
-    setStartDate("");
-    setEndDate("");
+    setStartDate(undefined);
+    setEndDate(undefined);
     setProductTypeFilters([]);
     setCourseFilters([]);
     setTeacher1Filters([]);
@@ -296,8 +297,8 @@ export default function Dashboard() {
   };
 
   const hasActiveFilters =
-    startDate !== "" ||
-    endDate !== "" ||
+    startDate !== undefined ||
+    endDate !== undefined ||
     productTypeFilters.length > 0 ||
     courseFilters.length > 0 ||
     teacher1Filters.length > 0 ||
@@ -317,7 +318,7 @@ export default function Dashboard() {
     return result.trim() || '0 min';
   };
 
-  const isFiltered = startDate !== "" || endDate !== "" || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
+  const isFiltered = startDate !== undefined || endDate !== undefined || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
 
   const handleLogout = () => {
     localStorage.removeItem("dashboard_session");
@@ -359,7 +360,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Date Range:</span>
                   <Badge variant="secondary" className="pl-2">
-                    {startDate || '...'} to {endDate || '...'}
+                    {startDate ? format(startDate, 'MMM dd, yyyy') : '...'} to {endDate ? format(endDate, 'MMM dd, yyyy') : '...'}
                   </Badge>
                 </div>
               )}
@@ -660,30 +661,48 @@ export default function Dashboard() {
             {/* Date Filter Row */}
             <div className="flex flex-col gap-4 md:flex-row md:items-end">
               <div className="grid w-full md:w-auto gap-1.5">
-                <Label htmlFor="start-date" className="text-sm font-medium">Start Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="start-date"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="pl-10 w-full md:w-[200px]"
-                  />
-                </div>
+                <Label className="text-sm font-medium">Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full md:w-[240px] justify-start text-left font-normal ${!startDate && "text-muted-foreground"}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid w-full md:w-auto gap-1.5">
-                <Label htmlFor="end-date" className="text-sm font-medium">End Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="pl-10 w-full md:w-[200px]"
-                  />
-                </div>
+                <Label className="text-sm font-medium">End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full md:w-[240px] justify-start text-left font-normal ${!endDate && "text-muted-foreground"}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             
