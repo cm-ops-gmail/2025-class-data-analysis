@@ -656,12 +656,16 @@ export default function Home() {
           <h2 className="text-2xl font-bold tracking-tight mb-4">
             Detailed Class Data
           </h2>
-          <DataTable
-            data={filteredData}
-            allColumns={allColumns}
-            columnVisibility={columnVisibility}
-            isLoading={isLoading}
-          />
+          <Card>
+            <CardContent className="p-0">
+              <DataTable
+                data={filteredData}
+                allColumns={allColumns}
+                columnVisibility={columnVisibility}
+                isLoading={isLoading}
+              />
+            </CardContent>
+          </Card>
         </section>
 
       </main>
