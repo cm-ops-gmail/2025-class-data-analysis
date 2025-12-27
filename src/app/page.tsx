@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TopTeachers } from "@/components/dashboard/top-teachers";
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
   if (value === null || value === undefined) return 0;
@@ -29,6 +30,15 @@ const parseNumericValue = (value: string | number | undefined | null): number =>
   return isNaN(numberValue) ? 0 : numberValue;
 };
 
+const monthMap: { [key: string]: number } = {
+  'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+  'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+};
+
+const monthNames = [
+  "January", "February", "March", "April", "May", "June", "July",
+  "August", "September", "October", "November", "December"
+];
 
 export default function Home() {
   const [data, setData] = useState<ClassEntry[]>([]);
@@ -40,6 +50,8 @@ export default function Home() {
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
+  const [startMonth, setStartMonth] = useState<string | undefined>();
+  const [endMonth, setEndMonth] = useState<string | undefined>();
 
   useEffect(() => {
     const handleImport = async (url: string) => {
@@ -109,7 +121,28 @@ export default function Home() {
   );
 
   const filteredData = useMemo(() => {
+    const startMonthIndex = startMonth ? monthNames.indexOf(startMonth) : -1;
+    const endMonthIndex = endMonth ? monthNames.indexOf(endMonth) : -1;
+
     return data.filter(item => {
+        if (startMonthIndex !== -1 || endMonthIndex !== -1) {
+            const dateParts = item.date.split('-');
+            if (dateParts.length === 3) {
+                const itemMonth = monthMap[dateParts[1]];
+                if (itemMonth === undefined) return false;
+                
+                const sm = startMonthIndex !== -1 ? startMonthIndex : 0;
+                const em = endMonthIndex !== -1 ? endMonthIndex : 11;
+
+                if (sm <= em) {
+                    if (itemMonth < sm || itemMonth > em) return false;
+                } else { // Handles year wrap-around e.g., Nov - Feb
+                    if (itemMonth > em && itemMonth < sm) return false;
+                }
+            } else {
+                return false;
+            }
+        }
         if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
             return false;
         }
@@ -130,7 +163,7 @@ export default function Home() {
         }
         return true;
     });
-  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
+  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters, startMonth, endMonth]);
 
 
   const summary = useMemo(() => {
@@ -182,13 +215,17 @@ export default function Home() {
     setCourseFilters([]);
     setTeacher1Filters([]);
     setSubjectFilters([]);
+    setStartMonth(undefined);
+    setEndMonth(undefined);
   };
 
   const hasActiveFilters =
     productTypeFilters.length > 0 ||
     courseFilters.length > 0 ||
     teacher1Filters.length > 0 ||
-    subjectFilters.length > 0;
+    subjectFilters.length > 0 ||
+    !!startMonth ||
+    !!endMonth;
     
   const formatDuration = (totalMinutes: number) => {
     const hours = Math.floor(totalMinutes / 60);
@@ -201,7 +238,7 @@ export default function Home() {
     if (minutes > 0) {
       result += `${minutes} min${minutes > 1 ? 's' : ''}`;
     }
-    return result.trim();
+    return result.trim() || '0 min';
   };
 
   return (
@@ -234,6 +271,14 @@ export default function Home() {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
+              {(startMonth || endMonth) && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Months:</span>
+                  <Badge variant="secondary" className="pl-2">
+                    {startMonth || '...'} - {endMonth || '...'}
+                  </Badge>
+                </div>
+              )}
               {productTypeFilters.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Product Types:</span>
@@ -537,6 +582,11 @@ export default function Home() {
           onClearFilters={clearAllFilters}
           onDataUpdate={setData}
           isLoading={isLoading}
+          startMonth={startMonth}
+          setStartMonth={setStartMonth}
+          endMonth={endMonth}
+          setEndMonth={setEndMonth}
+          monthNames={monthNames}
         />
       </main>
     </div>
