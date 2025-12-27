@@ -32,8 +32,8 @@ import {
 import { TeacherPerformanceCharts } from "@/components/dashboard/teacher-performance-charts";
 import Navbar from "@/components/navbar";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
@@ -113,8 +113,12 @@ export default function Dashboard() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [tempStartDate, setTempStartDate] = useState("");
-  const [tempEndDate, setTempEndDate] = useState("");
+  const [tempStartDate, setTempStartDate] = useState<Date | undefined>();
+  const [tempEndDate, setTempEndDate] = useState<Date | undefined>();
+  const [showStartCalendar, setShowStartCalendar] = useState(false);
+  const [showEndCalendar, setShowEndCalendar] = useState(false);
+  const [startCalendarMonth, setStartCalendarMonth] = useState(new Date());
+  const [endCalendarMonth, setEndCalendarMonth] = useState(new Date());
   const [productTypeFilters, setProductTypeFilters] = useState<string[]>([]);
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
@@ -291,8 +295,8 @@ export default function Dashboard() {
     setGlobalFilter("");
     setStartDate(undefined);
     setEndDate(undefined);
-    setTempStartDate("");
-    setTempEndDate("");
+    setTempStartDate(undefined);
+    setTempEndDate(undefined);
     setProductTypeFilters([]);
     setCourseFilters([]);
     setTeacher1Filters([]);
@@ -300,16 +304,104 @@ export default function Dashboard() {
   };
 
   const applyDateFilter = () => {
-    if (tempStartDate) {
-      setStartDate(new Date(tempStartDate));
-    } else {
-      setStartDate(undefined);
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
+    setShowStartCalendar(false);
+    setShowEndCalendar(false);
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days = [];
+    // Add empty slots for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
     }
-    if (tempEndDate) {
-      setEndDate(new Date(tempEndDate));
-    } else {
-      setEndDate(undefined);
+    // Add all days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
     }
+    return days;
+  };
+
+  const isSameDay = (date1: Date | undefined, date2: Date | null) => {
+    if (!date1 || !date2) return false;
+    return date1.getDate() === date2.getDate() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+  };
+
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "Select date";
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const CalendarPicker = ({ 
+    selectedDate, 
+    onSelectDate, 
+    currentMonth, 
+    setCurrentMonth 
+  }: { 
+    selectedDate: Date | undefined;
+    onSelectDate: (date: Date) => void;
+    currentMonth: Date;
+    setCurrentMonth: (date: Date) => void;
+  }) => {
+    const days = getDaysInMonth(currentMonth);
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+    const goToPreviousMonth = () => {
+      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    };
+    
+    const goToNextMonth = () => {
+      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    };
+
+    return (
+      <div className="bg-popover text-popover-foreground rounded-md border shadow-md p-3 w-[280px]">
+        <div className="flex items-center justify-between mb-2">
+          <Button variant="ghost" size="icon" onClick={goToPreviousMonth} className="h-7 w-7">
+            ←
+          </Button>
+          <div className="font-medium">
+            {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+          </div>
+          <Button variant="ghost" size="icon" onClick={goToNextMonth} className="h-7 w-7">
+            →
+          </Button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-1">
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day, index) => (
+            <button
+              key={index}
+              onClick={() => day && onSelectDate(day)}
+              disabled={!day}
+              className={cn(
+                "h-8 w-8 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors",
+                !day && "invisible",
+                isSameDay(selectedDate, day) && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+              )}
+            >
+              {day?.getDate()}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const hasActiveFilters =
@@ -376,7 +468,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Date Range:</span>
                   <Badge variant="secondary" className="pl-2">
-                    {startDate ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '...'} to {endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '...'}
+                    {formatDate(startDate)} to {formatDate(endDate)}
                   </Badge>
                 </div>
               )}
@@ -677,30 +769,48 @@ export default function Dashboard() {
             {/* Date Filter Row */}
             <div className="flex flex-col gap-4 md:flex-row md:items-end">
               <div className="grid w-full md:w-auto gap-1.5">
-                <Label htmlFor="start-date" className="text-sm font-medium">Start Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="start-date"
-                    type="date"
-                    value={tempStartDate}
-                    onChange={(e) => setTempStartDate(e.target.value)}
-                    className="pl-10 w-full md:w-[240px]"
-                  />
-                </div>
+                <Label className="text-sm font-medium">Start Date</Label>
+                <Popover open={showStartCalendar} onOpenChange={setShowStartCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-[240px] justify-start text-left font-normal"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formatDate(tempStartDate)}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      selectedDate={tempStartDate}
+                      onSelectDate={setTempStartDate}
+                      currentMonth={startCalendarMonth}
+                      setCurrentMonth={setStartCalendarMonth}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid w-full md:w-auto gap-1.5">
-                <Label htmlFor="end-date" className="text-sm font-medium">End Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={tempEndDate}
-                    onChange={(e) => setTempEndDate(e.target.value)}
-                    className="pl-10 w-full md:w-[240px]"
-                  />
-                </div>
+                <Label className="text-sm font-medium">End Date</Label>
+                <Popover open={showEndCalendar} onOpenChange={setShowEndCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-[240px] justify-start text-left font-normal"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formatDate(tempEndDate)}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      selectedDate={tempEndDate}
+                      onSelectDate={setTempEndDate}
+                      currentMonth={endCalendarMonth}
+                      setCurrentMonth={setEndCalendarMonth}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {(tempStartDate || tempEndDate) && (
                 <Button
