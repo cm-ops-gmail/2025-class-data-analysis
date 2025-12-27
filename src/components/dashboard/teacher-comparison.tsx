@@ -5,8 +5,8 @@ import type { ClassEntry } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Award, Clock, Star, Users, BookOpen, Package, Info, UserSearch } from 'lucide-react';
-import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader } from '@/components/ui/table';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Table, TableBody, TableCell, TableRow, TableHead, TableHeader, TableFooter } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelectFilter } from './multi-select-filter';
@@ -29,6 +29,7 @@ type TeacherStats = {
   name: string;
   classCount: number;
   totalDuration: number;
+  totalAverageAttendance: number;
   avgAttendance: number;
   highestPeakAttendance: number;
   uniqueCourses: string[];
@@ -46,6 +47,7 @@ const calculateTeacherGroupStats = (teacherNames: string[], allData: ClassEntry[
       name: teacherNames.join(', '),
       classCount: 0,
       totalDuration: 0,
+      totalAverageAttendance: 0,
       avgAttendance: 0,
       highestPeakAttendance: 0,
       uniqueCourses: [],
@@ -72,6 +74,7 @@ const calculateTeacherGroupStats = (teacherNames: string[], allData: ClassEntry[
     name: teacherNames.join(', '),
     classCount: teacherClasses.length,
     totalDuration,
+    totalAverageAttendance,
     avgAttendance: teacherClasses.length > 0 ? Math.round(totalAverageAttendance / teacherClasses.length) : 0,
     highestPeakAttendance,
     uniqueCourses: [...new Set(teacherClasses.map(c => c.course).filter(Boolean))],
@@ -81,63 +84,145 @@ const calculateTeacherGroupStats = (teacherNames: string[], allData: ClassEntry[
   };
 };
 
+const formatDuration = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    let result = '';
+    if (hours > 0) {
+      result += `${hours} hour${hours > 1 ? 's' : ''} `;
+    }
+    if (minutes > 0) {
+      result += `${minutes} min${minutes > 1 ? 's' : ''}`;
+    }
+    return result.trim() || '0 min';
+  };
+
 const StatPopover = ({ details, statType }: { details: TeacherStats | null, statType: keyof TeacherStats | 'avgAttendance' }) => {
     if (!details) return null;
 
     let content;
+    let title;
+    let isDialog = false;
+
     switch (statType) {
         case 'classCount':
+            isDialog = true;
+            title = `Classes Taught by ${details.name}`;
             content = (
-                <ScrollArea className="h-48">
-                    <div className="flex flex-col gap-2 text-sm pr-4">
-                        <h4 className="font-bold mb-2">Classes Taught ({details.classes.length})</h4>
-                        {details.classes.map(c => (
-                            <div key={c.id} className="flex justify-between items-center border-b pb-1">
-                                <span className="truncate max-w-[150px]">{c.topic}</span>
-                                <Badge variant="secondary">{c.date}</Badge>
-                            </div>
-                        ))}
-                    </div>
+                <ScrollArea className="h-96 mt-4">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Topic</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {details.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
+                                <TableRow key={c.id}>
+                                    <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
+                                    <TableCell className="font-medium max-w-[300px] truncate">{c.topic}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                         <TableFooter>
+                            <TableRow>
+                                <TableCell className="font-bold">Total</TableCell>
+                                <TableCell className="font-bold">{details.classCount}</TableCell>
+                            </TableRow>
+                        </TableFooter>
+                    </Table>
                 </ScrollArea>
             );
             break;
         case 'avgAttendance':
-            content = <p className="text-sm text-muted-foreground">Based on {details.classCount} classes.</p>;
+            isDialog = true;
+            title = "Average Attendance Calculation"
+            content = (
+                <div className="grid gap-4 py-4 text-sm mt-4">
+                    <p>Total Combined Attendance: {details.totalAverageAttendance.toLocaleString()}</p>
+                    <p>Total Classes: {details.classCount.toLocaleString()}</p>
+                    <p className="font-bold border-t pt-2 mt-1">
+                        {details.totalAverageAttendance.toLocaleString()} / {details.classCount > 0 ? details.classCount.toLocaleString() : 1} = {details.avgAttendance.toLocaleString()}
+                    </p>
+                </div>
+            );
             break;
         case 'highestPeakAttendance':
+            isDialog = false;
+            title = "Highest Attendance Class";
             content = (
-                <div className="text-sm">
+                <div className="text-sm p-4 space-y-1">
                     {details.highestAttendanceClass ? (
                         <>
-                            <p className="font-bold">{details.highestAttendanceClass.topic}</p>
+                            <h4 className="font-semibold">{details.name}</h4>
+                            <p className="font-bold text-base">{details.highestAttendanceClass.topic}</p>
                             <p className="text-xs text-muted-foreground">{details.highestAttendanceClass.date}</p>
                         </>
-                    ) : 'No data'}
+                    ) : 'No data available'}
                 </div>
             );
             break;
         case 'totalDuration':
-             content = <p className="text-sm text-muted-foreground">Total from {details.classCount} classes.</p>;
+             isDialog = false;
+             title = "Total Duration";
+             content = <div className="font-bold text-lg p-4">{formatDuration(details.totalDuration)}</div>
              break;
         case 'uniqueCourses':
-             content = <div className="flex flex-wrap gap-1">{details.uniqueCourses.map(c => <Badge key={c} variant="secondary">{c}</Badge>)}</div>
+             isDialog = true;
+             title = `Unique Courses Taught by ${details.name}`;
+             content = (
+                 <ScrollArea className="h-72 mt-4">
+                    <div className="flex flex-wrap gap-2 p-1">
+                        {details.uniqueCourses.map(c => <Badge key={c} variant="secondary" className="text-base">{c}</Badge>)}
+                    </div>
+                </ScrollArea>
+             );
              break;
         case 'uniqueProductTypes':
-             content = <div className="flex flex-wrap gap-1">{details.uniqueProductTypes.map(p => <Badge key={p} variant="secondary">{p}</Badge>)}</div>
+             isDialog = true;
+             title = `Unique Product Types Taught by ${details.name}`;
+             content = (
+                 <ScrollArea className="h-72 mt-4">
+                    <div className="flex flex-wrap gap-2 p-1">
+                        {details.uniqueProductTypes.map(p => <Badge key={p} variant="secondary" className="text-base">{p}</Badge>)}
+                    </div>
+                 </ScrollArea>
+             );
              break;
         default:
-            content = null;
+            return null;
+    }
+
+    if (isDialog) {
+        return (
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>{title}</DialogTitle>
+                    </DialogHeader>
+                    {content}
+                </DialogContent>
+            </Dialog>
+        )
     }
 
     return (
-        <Popover>
-            <PopoverTrigger asChild>
+        <Dialog>
+            <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-5 w-5"><Info className="h-4 w-4 text-muted-foreground" /></Button>
-            </PopoverTrigger>
-            <PopoverContent side="top" className="w-auto max-w-xs">
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                </DialogHeader>
                 {content}
-            </PopoverContent>
-        </Popover>
+            </DialogContent>
+        </Dialog>
     );
 };
 
