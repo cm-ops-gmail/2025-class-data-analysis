@@ -30,7 +30,6 @@ import type { ClassEntry } from "@/lib/definitions";
 import { MultiSelectFilter } from "./multi-select-filter";
 import { TopTeachers } from "./top-teachers";
 import { ScrollArea } from "../ui/scroll-area";
-import { MonthRangeFilter } from "./month-range-filter";
 
 type ColumnDef = {
   key: keyof ClassEntry;
@@ -77,11 +76,6 @@ interface DataTableProps {
   onClearFilters: () => void;
   onDataUpdate: (data: ClassEntry[]) => void;
   isLoading: boolean;
-  startMonth?: string;
-  setStartMonth: (month?: string) => void;
-  endMonth?: string;
-  setEndMonth: (month?: string) => void;
-  monthNames: string[];
 }
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
@@ -115,11 +109,6 @@ export function DataTable({
   onClearFilters,
   onDataUpdate,
   isLoading,
-  startMonth,
-  setStartMonth,
-  endMonth,
-  setEndMonth,
-  monthNames,
 }: DataTableProps) {
   const [sortConfig, setSortConfig] = React.useState<SortConfig>(null);
 
@@ -189,20 +178,12 @@ export function DataTable({
     setSortConfig({ key, direction });
   };
 
-  const isFiltered = globalFilter || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0 || !!startMonth || !!endMonth;
+  const isFiltered = globalFilter || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-4 md:flex-row">
-            <MonthRangeFilter
-              startMonth={startMonth}
-              setStartMonth={setStartMonth}
-              endMonth={endMonth}
-              setEndMonth={setEndMonth}
-              monthNames={monthNames}
-            />
-        </div>
+        
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:flex-wrap">
           <MultiSelectFilter
             title="Product Types"

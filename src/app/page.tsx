@@ -50,8 +50,6 @@ export default function Home() {
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
-  const [startMonth, setStartMonth] = useState<string | undefined>();
-  const [endMonth, setEndMonth] = useState<string | undefined>();
 
   useEffect(() => {
     const handleImport = async (url: string) => {
@@ -122,27 +120,6 @@ export default function Home() {
 
   const filteredData = useMemo(() => {
     return data.filter(item => {
-      const startMonthIndex = startMonth ? monthNames.indexOf(startMonth) : -1;
-      const endMonthIndex = endMonth ? monthNames.indexOf(endMonth) : -1;
-
-      // Month Filtering
-      if (startMonthIndex !== -1 || endMonthIndex !== -1) {
-        const dateParts = item.date.split('-');
-        if (dateParts.length !== 3) return false;
-
-        const itemMonth = monthMap[dateParts[1]];
-        if (itemMonth === undefined) return false;
-
-        const sm = startMonthIndex !== -1 ? startMonthIndex : 0;
-        const em = endMonthIndex !== -1 ? endMonthIndex : 11;
-
-        if (sm <= em) { // e.g. Jan - May
-            if (itemMonth < sm || itemMonth > em) return false;
-        } else { // e.g. Nov - Feb (wraps around the year)
-            if (itemMonth > em && itemMonth < sm) return false;
-        }
-      }
-      
       // Other Filters
       if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
           return false;
@@ -164,7 +141,7 @@ export default function Home() {
       }
       return true;
     });
-  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters, startMonth, endMonth]);
+  }, [data, globalFilter, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
 
 
   const summary = useMemo(() => {
@@ -216,17 +193,13 @@ export default function Home() {
     setCourseFilters([]);
     setTeacher1Filters([]);
     setSubjectFilters([]);
-    setStartMonth(undefined);
-    setEndMonth(undefined);
   };
 
   const hasActiveFilters =
     productTypeFilters.length > 0 ||
     courseFilters.length > 0 ||
     teacher1Filters.length > 0 ||
-    subjectFilters.length > 0 ||
-    !!startMonth ||
-    !!endMonth;
+    subjectFilters.length > 0;
     
   const formatDuration = (totalMinutes: number) => {
     const hours = Math.floor(totalMinutes / 60);
@@ -272,14 +245,6 @@ export default function Home() {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              {(startMonth || endMonth) && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Months:</span>
-                  <Badge variant="secondary" className="pl-2">
-                    {startMonth || '...'} - {endMonth || '...'}
-                  </Badge>
-                </div>
-              )}
               {productTypeFilters.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Product Types:</span>
@@ -583,11 +548,6 @@ export default function Home() {
           onClearFilters={clearAllFilters}
           onDataUpdate={setData}
           isLoading={isLoading}
-          startMonth={startMonth}
-          setStartMonth={setStartMonth}
-          endMonth={endMonth}
-          setEndMonth={setEndMonth}
-          monthNames={monthNames}
         />
       </main>
     </div>
