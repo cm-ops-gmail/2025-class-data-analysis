@@ -67,10 +67,7 @@ const processChartData = (
   const top30 = performanceSorted.slice(0, 30);
   const others = performanceSorted.slice(30);
 
-  // Now, sort the top 30 alphabetically by name
-  const alphaSortedTop30 = top30.sort((a, b) => a.name.localeCompare(b.name));
-
-  const chartData = alphaSortedTop30.map(teacher => ({
+  const chartData = top30.map(teacher => ({
     name: teacher.name,
     value: teacher[valueKey] as number,
   }));
