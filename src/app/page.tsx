@@ -121,28 +121,33 @@ export default function Home() {
   );
 
   const filteredData = useMemo(() => {
-    const startMonthIndex = startMonth ? monthNames.indexOf(startMonth) : -1;
-    const endMonthIndex = endMonth ? monthNames.indexOf(endMonth) : -1;
-
     return data.filter(item => {
+        const startMonthIndex = startMonth ? monthNames.indexOf(startMonth) : -1;
+        const endMonthIndex = endMonth ? monthNames.indexOf(endMonth) : -1;
+
         if (startMonthIndex !== -1 || endMonthIndex !== -1) {
             const dateParts = item.date.split('-');
-            if (dateParts.length === 3) {
-                const itemMonth = monthMap[dateParts[1]];
-                if (itemMonth === undefined) return false;
-                
-                const sm = startMonthIndex !== -1 ? startMonthIndex : 0;
-                const em = endMonthIndex !== -1 ? endMonthIndex : 11;
+            if (dateParts.length !== 3) return false;
 
-                if (sm <= em) {
+            const itemMonth = monthMap[dateParts[1]];
+            if (itemMonth === undefined) return false;
+
+            const sm = startMonthIndex !== -1 ? startMonthIndex : 0;
+            const em = endMonthIndex !== -1 ? endMonthIndex : 11;
+
+            if (startMonthIndex !== -1 && endMonthIndex === -1) { // Only start month
+                if (itemMonth < sm) return false;
+            } else if (startMonthIndex === -1 && endMonthIndex !== -1) { // Only end month
+                if (itemMonth > em) return false;
+            } else { // Both months are selected
+                if (sm <= em) { // e.g. Jan - May
                     if (itemMonth < sm || itemMonth > em) return false;
-                } else { // Handles year wrap-around e.g., Nov - Feb
+                } else { // e.g. Nov - Feb (wraps around the year)
                     if (itemMonth > em && itemMonth < sm) return false;
                 }
-            } else {
-                return false;
             }
         }
+        
         if (productTypeFilters.length > 0 && !productTypeFilters.includes(item.productType)) {
             return false;
         }
