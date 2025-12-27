@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from 'react';
-import { Pie, PieChart, Cell } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis } from 'recharts';
 import type { ClassEntry } from '@/lib/definitions';
 import {
   Card,
@@ -14,8 +14,6 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from '@/components/ui/chart';
 
 interface TeacherPerformanceChartsProps {
@@ -76,8 +74,9 @@ const processChartData = (
     const othersValue = others.reduce((acc, teacher) => acc + (teacher[valueKey] as number), 0);
     chartData.push({ name: 'Others', value: Math.round(othersValue) });
   }
-
-  return chartData.map((item, index) => ({
+  
+  // reverse for horizontal bar chart
+  return chartData.reverse().map((item, index) => ({
     ...item,
     fill: COLORS[index % COLORS.length],
   }));
@@ -156,32 +155,40 @@ export function TeacherPerformanceCharts({ data }: TeacherPerformanceChartsProps
             <CardTitle>{title}</CardTitle>
             <CardDescription>Top 15 Teachers Distribution</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center items-center pb-0">
+          <CardContent className="flex-1 pl-0 pr-6">
             <ChartContainer
               config={chartConfig(data)}
-              className="mx-auto aspect-square w-full max-w-[300px]"
+              className="h-[500px] w-full"
             >
-              <PieChart>
+              <BarChart
+                accessibilityLayer
+                data={data}
+                layout="vertical"
+                margin={{
+                  left: 10,
+                  right: 10,
+                }}
+              >
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  width={120}
+                  className="text-xs"
+                />
+                <XAxis dataKey="value" type="number" hide />
                 <ChartTooltip
                   cursor={false}
                   content={<ChartTooltipContent hideLabel />}
                 />
-                <Pie
-                  data={data}
+                <Bar
                   dataKey="value"
-                  nameKey="name"
-                  innerRadius={60}
-                  strokeWidth={5}
-                >
-                   {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <ChartLegend
-                  content={<ChartLegendContent nameKey="name" />}
-                  className="-translate-y-2 flex-wrap"
+                  radius={5}
+                  barSize={20}
                 />
-              </PieChart>
+              </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
