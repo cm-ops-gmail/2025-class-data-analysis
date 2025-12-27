@@ -532,15 +532,6 @@ export default function Home() {
             </Card>
           </div>
         </section>
-
-        <Separator className="my-8" />
-        
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold tracking-tight mb-4">
-            Top 3 Teachers Stats on Various Categories
-          </h2>
-          <TopTeachers data={data} />
-        </section>
         
         <Separator className="my-8" />
 
@@ -571,10 +562,20 @@ export default function Home() {
             isLoading={isLoading}
           />
         </section>
+
+        <Separator className="my-8" />
+        
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold tracking-tight mb-4">
+            Top 3 Teachers Stats on Various Categories
+          </h2>
+          <TopTeachers data={data} />
+        </section>
+        
       </main>
       <footer className="border-t">
         <div className="container mx-auto px-4 py-6 text-center text-muted-foreground">
-          &copy; {new Date().getFullYear()} Run Sheet Data Visualization. All Rights Reserved.
+          content operation all rights reseved
         </div>
       </footer>
     </div>

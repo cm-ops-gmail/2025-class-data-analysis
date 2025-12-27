@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import type { ClassEntry } from "@/lib/definitions";
 import { MultiSelectFilter } from "./multi-select-filter";
-import { TopTeachers } from "./top-teachers";
 import { ScrollArea } from "../ui/scroll-area";
 
 type ColumnDef = {
@@ -259,11 +258,7 @@ export function DataTable({
         </div>
       </div>
       
-      <div className="my-8">
-        <TopTeachers data={allData} />
-      </div>
-
-      <div className="rounded-md border">
+      <ScrollArea className="h-[500px] rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -322,7 +317,7 @@ export function DataTable({
             )}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
     </div>
   );
 }
