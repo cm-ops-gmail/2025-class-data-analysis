@@ -192,9 +192,6 @@ export default function TeacherProfilePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Navbar>
-        <Button variant="ghost" onClick={() => router.push('/')}>
-            Home
-        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -531,6 +528,22 @@ export default function TeacherProfilePage() {
         <TeacherComparison data={data} allTeachers={allTeachers} />
 
       </main>
+      <footer className="border-t">
+        <div className="container mx-auto flex items-center justify-between px-4 py-6 text-sm text-muted-foreground">
+          <div>© 2025 10 MS Content Operations. All rights reserved.</div>
+          <div className="flex items-center gap-6">
+            <a href="#" className="transition-colors hover:text-foreground">
+              Policy Book
+            </a>
+            <a href="#" className="transition-colors hover:text-foreground">
+              Automation Projects
+            </a>
+            <a href="#" className="transition-colors hover:text-foreground">
+              Automation Project Documentation
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
