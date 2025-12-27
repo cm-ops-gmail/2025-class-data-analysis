@@ -12,12 +12,12 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut } from 'lucide-react';
+import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut, Package, Info } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { useRouter } from 'next/navigation';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelectFilter } from '@/components/dashboard/multi-select-filter';
 
@@ -46,6 +46,8 @@ type TeacherStats = {
   classes: ClassEntry[];
   highestAttendanceClass: ClassEntry | null;
   courseBreakdown: CourseBreakdown;
+  uniqueCourses: string[];
+  uniqueProductTypes: string[];
 };
 
 export default function TeacherProfilePage() {
@@ -125,6 +127,8 @@ export default function TeacherProfilePage() {
           classes: [],
           highestAttendanceClass: null,
           courseBreakdown: {},
+          uniqueCourses: [],
+          uniqueProductTypes: [],
         };
       }
 
@@ -153,6 +157,8 @@ export default function TeacherProfilePage() {
         t.classCount > 0
           ? Math.round(t.totalAverageAttendance / t.classCount)
           : 0;
+      t.uniqueCourses = [...new Set(t.classes.map(c => c.course).filter(Boolean))];
+      t.uniqueProductTypes = [...new Set(t.classes.map(c => c.productType).filter(Boolean))];
     });
 
     return stats;
@@ -239,14 +245,45 @@ export default function TeacherProfilePage() {
                                             <p className="text-2xl font-bold">{currentTeacherStats.avgAttendance.toLocaleString()}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 rounded-lg border p-4">
-                                        <Star className="h-8 w-8 text-chart-5" />
+                                     <div className="flex items-center gap-4 rounded-lg border p-4">
+                                        <BookOpen className="h-8 w-8 text-chart-3" />
                                         <div>
-                                            <p className="text-muted-foreground">Highest Peak</p>
-                                            <p className="text-2xl font-bold">{currentTeacherStats.highestPeakAttendance.toLocaleString()}</p>
-                                            {currentTeacherStats.highestAttendanceClass && <p className="text-xs truncate text-muted-foreground" title={currentTeacherStats.highestAttendanceClass.topic}>
-                                                in "{currentTeacherStats.highestAttendanceClass.topic}"
-                                            </p>}
+                                            <p className="text-muted-foreground">Courses Taught</p>
+                                            <p className="text-2xl font-bold">{currentTeacherStats.uniqueCourses.length}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 rounded-lg border p-4">
+                                        <Package className="h-8 w-8 text-chart-6" />
+                                        <div>
+                                            <p className="text-muted-foreground">Product Types</p>
+                                            <p className="text-2xl font-bold">{currentTeacherStats.uniqueProductTypes.length}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 rounded-lg border p-4 col-span-1 md:col-span-2">
+                                        <Star className="h-8 w-8 text-chart-5" />
+                                        <div className="flex-1 flex justify-between items-center">
+                                            <div>
+                                                <p className="text-muted-foreground">Highest Peak Attendance</p>
+                                                <p className="text-2xl font-bold">{currentTeacherStats.highestPeakAttendance.toLocaleString()}</p>
+                                            </div>
+                                            {currentTeacherStats.highestAttendanceClass && (
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto max-w-xs">
+                                                        <div className="space-y-1">
+                                                          <h4 className="font-semibold">Highest Attendance Class</h4>
+                                                          <p className="text-sm">
+                                                              {currentTeacherStats.highestAttendanceClass.topic}
+                                                          </p>
+                                                          <p className="text-xs text-muted-foreground">
+                                                              {currentTeacherStats.highestAttendanceClass.date}
+                                                          </p>
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4 rounded-lg border p-4">
@@ -280,6 +317,12 @@ export default function TeacherProfilePage() {
                                             </TableRow>
                                         ))}
                                     </TableBody>
+                                    <TableFooter>
+                                        <TableRow>
+                                            <TableCell className="font-bold">Total</TableCell>
+                                            <TableCell className="text-right font-bold">{currentTeacherStats.classCount}</TableCell>
+                                        </TableRow>
+                                    </TableFooter>
                                 </Table>
                             </CardContent>
                         </Card>
@@ -335,3 +378,5 @@ export default function TeacherProfilePage() {
     </div>
   );
 }
+
+    
