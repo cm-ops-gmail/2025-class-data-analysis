@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { DataTable } from "@/components/dashboard/data-table";
 import Logo from "@/components/logo";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info } from "lucide-react";
+import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -21,6 +21,15 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TopTeachers } from "@/components/dashboard/top-teachers";
 import { Separator } from "@/components/ui/separator";
+import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
   if (value === null || value === undefined) return 0;
@@ -51,6 +60,19 @@ export default function Home() {
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
   const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
+
+  const [columnVisibility, setColumnVisibility] = React.useState<
+    Record<keyof ClassEntry, boolean>
+  >(() => {
+    const visibility: Record<string, boolean> = {};
+    for (const col of allColumns) {
+      visibility[col.key] = defaultVisibleColumns.includes(
+        col.key as keyof ClassEntry
+      );
+    }
+    return visibility as Record<keyof ClassEntry, boolean>;
+  });
+
 
   useEffect(() => {
     const handleImport = async (url: string) => {
@@ -215,6 +237,9 @@ export default function Home() {
     }
     return result.trim() || '0 min';
   };
+
+  const isFiltered = productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -534,40 +559,107 @@ export default function Home() {
         </section>
         
         <Separator className="my-8" />
+
+        <section className="space-y-4">
+           <h2 className="text-2xl font-bold tracking-tight">
+            Advanced Filtering & Column Selection
+          </h2>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:flex-wrap">
+              <MultiSelectFilter
+                title="Product Types"
+                options={productTypes.map(type => ({ value: type, label: type }))}
+                selectedValues={productTypeFilters}
+                onSelectedValuesChange={setProductTypeFilters}
+                triggerClassName="w-full md:w-auto"
+              />
+              <MultiSelectFilter
+                title="Courses"
+                options={courses.map(course => ({ value: course, label: course }))}
+                selectedValues={courseFilters}
+                onSelectedValuesChange={setCourseFilters}
+                triggerClassName="w-full md:w-auto"
+              />
+              <MultiSelectFilter
+                title="Teachers"
+                options={teachers.map(teacher => ({ value: teacher, label: teacher }))}
+                selectedValues={teacher1Filters}
+                onSelectedValuesChange={setTeacher1Filters}
+                triggerClassName="w-full md:w-auto"
+              />
+              <MultiSelectFilter
+                title="Subjects"
+                options={subjects.map(subject => ({ value: subject, label: subject }))}
+                selectedValues={subjectFilters}
+                onSelectedValuesChange={setSubjectFilters}
+                triggerClassName="w-full md:w-auto"
+              />
+
+              {isFiltered && (
+                <Button
+                  variant="ghost"
+                  onClick={clearAllFilters}
+                  className="h-10 px-2 lg:px-3"
+                >
+                  Clear Filters
+                  <X className="ml-2 h-4 w-4" />
+                </Button>
+              )}
+
+
+              <div className="flex-grow" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-10 ml-auto">
+                    <Columns className="mr-2 h-4 w-4" />
+                    View
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[250px]">
+                  <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <ScrollArea className="h-72">
+                    {allColumns.map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.key}
+                        className="capitalize"
+                        checked={columnVisibility[column.key as keyof ClassEntry]}
+                        onCheckedChange={(value) =>
+                          setColumnVisibility((prev) => ({
+                            ...prev,
+                            [column.key]: !!value,
+                          }))
+                        }
+                      >
+                        {column.header}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </ScrollArea>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </section>
+        
+        <Separator className="my-8" />
         
         <section className="mb-12">
           <h2 className="text-2xl font-bold tracking-tight mb-4">
-            Top 3 Teachers Stats on Various Categories
+            Top Teacher Performance
           </h2>
-          <TopTeachers data={data} />
+          <TopTeachers data={filteredData} />
         </section>
 
         <Separator className="my-8" />
 
         <section>
           <h2 className="text-2xl font-bold tracking-tight mb-4">
-            Filter & View Data
+            Detailed Class Data
           </h2>
           <DataTable
             data={filteredData}
-            allData={data}
             allColumns={allColumns}
-            productTypes={productTypes}
-            courses={courses}
-            teachers={teachers}
-            subjects={subjects}
-            globalFilter={globalFilter}
-            setGlobalFilter={setGlobalFilter}
-            productTypeFilters={productTypeFilters}
-            setProductTypeFilters={setProductTypeFilters}
-            courseFilters={courseFilters}
-            setCourseFilters={setCourseFilters}
-            teacher1Filters={teacher1Filters}
-            setTeacher1Filters={setTeacher1Filters}
-            subjectFilters={subjectFilters}
-            setSubjectFilters={setSubjectFilters}
-            onClearFilters={clearAllFilters}
-            onDataUpdate={setData}
+            columnVisibility={columnVisibility}
             isLoading={isLoading}
           />
         </section>
@@ -581,6 +673,20 @@ export default function Home() {
     </div>
   );
 }
+
+const defaultVisibleColumns: (keyof ClassEntry)[] = [
+  "date",
+  "scheduledTime",
+  "productType",
+  "course",
+  "subject",
+  "topic",
+  "teacher1",
+  "highestAttendance",
+  "averageAttendance",
+  "totalDurationMinutes",
+];
+
 
 const allColumns = [
   { key: "date", header: "Date", sortable: true },
