@@ -271,12 +271,16 @@ export function TeacherComparison({ data, allTeachers }: TeacherComparisonProps)
 
         {teacherGroup1.length > 0 && teacherGroup2.length > 0 ? (
             <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed">
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-[200px]">Metric</TableHead>
-                        <TableHead className="text-center">{teacherGroup1Stats?.name || 'Group 1'}</TableHead>
-                        <TableHead className="text-center">{teacherGroup2Stats?.name || 'Group 2'}</TableHead>
+                        <TableHead className="text-center w-1/3 break-words">
+                            {teacherGroup1Stats?.name || 'Group 1'}
+                        </TableHead>
+                        <TableHead className="text-center w-1/3 break-words">
+                            {teacherGroup2Stats?.name || 'Group 2'}
+                        </TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
