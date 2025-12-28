@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut, Package, Info } from 'lucide-react';
+import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut, Package, Info, User, X } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -188,6 +188,8 @@ export default function TeacherProfilePage() {
     localStorage.removeItem('dashboard_session');
     router.replace('/login');
   };
+  
+  const isAnyTeacherSelected = selectedTeachers.length > 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -211,7 +213,23 @@ export default function TeacherProfilePage() {
           </p>
         </div>
 
-        <div className="mb-8">
+        <div className="flex justify-center mb-8">
+            <Card className="w-full max-w-sm border-chart-3/50 hover:border-chart-3 transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 text-center">
+                    <CardTitle className="text-sm font-medium text-chart-3 w-full text-center">
+                        {isAnyTeacherSelected ? 'Selected Teachers' : 'Total Unique Teachers'}
+                    </CardTitle>
+                    <Users className="h-4 w-4 text-chart-3" />
+                </CardHeader>
+                <CardContent className="text-center">
+                    <div className="text-2xl font-bold text-chart-3">
+                        {isAnyTeacherSelected ? selectedTeachers.length : allTeachers.length}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="flex items-center gap-2 mb-8">
             {isLoading ? (
                 <Skeleton className="h-10 w-full md:w-[400px]" />
             ) : (
@@ -223,10 +241,20 @@ export default function TeacherProfilePage() {
                     triggerClassName="w-full md:w-[400px]"
                 />
             )}
+             {isAnyTeacherSelected && (
+              <Button
+                variant="ghost"
+                onClick={() => setSelectedTeachers([])}
+                className="h-10 px-2 lg:px-3"
+              >
+                Clear selection
+                <X className="ml-2 h-4 w-4" />
+              </Button>
+            )}
         </div>
         
-        {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {isLoading && selectedTeachers.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                 {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-36" />)}
             </div>
         )}
@@ -474,74 +502,61 @@ export default function TeacherProfilePage() {
                         </CardContent>
                     </Card>
 
-                    <div>
-                    <h2 className="text-2xl font-bold tracking-tight mb-4">
-                        Class History ({aggregatedStats.classCount})
-                    </h2>
                     <Card>
-  <CardContent className="p-0">
-    <style>{`
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 12px;
-        height: 12px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 6px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: white;
-        border-radius: 6px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #e0e0e0;
-      }
-      .custom-scrollbar {
-        scrollbar-width: thin;
-        scrollbar-color: white rgba(255, 255, 255, 0.1);
-      }
-    `}</style>
-    <div className="h-[500px] overflow-auto custom-scrollbar">
-      <Table className="whitespace-nowrap">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Teacher</TableHead>
-            <TableHead>Topic</TableHead>
-            <TableHead>Course</TableHead>
-            <TableHead className="text-right">Avg. Attendance</TableHead>
-            <TableHead className="text-right">Peak Attendance</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {aggregatedStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
-            <TableRow key={c.id}>
-              <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
-              <TableCell>{c.teacher1}</TableCell>
-              <TableCell className="font-medium max-w-[200px] truncate">{c.topic}</TableCell>
-              <TableCell>{c.course}</TableCell>
-              <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
-              <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  </CardContent>
-</Card>
-                    </div>
+                      <CardContent className="p-0">
+                        <style>{`
+                          .custom-scrollbar::-webkit-scrollbar {
+                            width: 12px;
+                            height: 12px;
+                          }
+                          .custom-scrollbar::-webkit-scrollbar-track {
+                            background: rgba(255, 255, 255, 0.1);
+                            border-radius: 6px;
+                          }
+                          .custom-scrollbar::-webkit-scrollbar-thumb {
+                            background: white;
+                            border-radius: 6px;
+                          }
+                          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                            background: #e0e0e0;
+                          }
+                          .custom-scrollbar {
+                            scrollbar-width: thin;
+                            scrollbar-color: white rgba(255, 255, 255, 0.1);
+                          }
+                        `}</style>
+                        <div className="h-[500px] overflow-auto custom-scrollbar">
+                          <Table className="whitespace-nowrap">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Teacher</TableHead>
+                                <TableHead>Topic</TableHead>
+                                <TableHead>Course</TableHead>
+                                <TableHead className="text-right">Avg. Attendance</TableHead>
+                                <TableHead className="text-right">Peak Attendance</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {aggregatedStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
+                                <TableRow key={c.id}>
+                                  <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
+                                  <TableCell>{c.teacher1}</TableCell>
+                                  <TableCell className="font-medium max-w-[200px] truncate">{c.topic}</TableCell>
+                                  <TableCell>{c.course}</TableCell>
+                                  <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
                 </div>
             </div>
         )}
         
-        {!isLoading && !aggregatedStats && selectedTeachers.length === 0 && (
-             <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12 h-96">
-                <UserCheck className="h-16 w-16 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold">Select Teachers</h2>
-                <p className="text-muted-foreground mt-2">Choose one or more teachers from the dropdown above to see their combined statistics.</p>
-            </div>
-        )}
-
         <Separator />
         
         <TeacherComparison data={data} allTeachers={allTeachers} />
