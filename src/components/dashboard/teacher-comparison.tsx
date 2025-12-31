@@ -41,7 +41,7 @@ type TeacherStats = {
 const calculateTeacherGroupStats = (teacherNames: string[], allData: ClassEntry[]): TeacherStats | null => {
   if (!teacherNames || teacherNames.length === 0) return null;
 
-  const teacherClasses = allData.filter(item => teacherNames.includes(item.teacher1));
+  const teacherClasses = allData.filter(item => teacherNames.includes(item.teacher));
   if (teacherClasses.length === 0) {
     return {
       name: teacherNames.join(', '),
@@ -58,7 +58,7 @@ const calculateTeacherGroupStats = (teacherNames: string[], allData: ClassEntry[
   }
 
   const totalAverageAttendance = teacherClasses.reduce((acc, item) => acc + parseNumericValue(item.averageAttendance), 0);
-  const totalDuration = teacherClasses.reduce((acc, item) => acc + parseNumericValue(item.totalDurationMinutes), 0);
+  const totalDuration = teacherClasses.reduce((acc, item) => acc + parseNumericValue(item.totalDuration), 0);
   
   let highestPeakAttendance = 0;
   let highestAttendanceClass: ClassEntry | null = null;
@@ -115,14 +115,14 @@ const StatPopover = ({ details, statType }: { details: TeacherStats | null, stat
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Topic</TableHead>
+                                <TableHead>Subject</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {details.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
                                 <TableRow key={c.id}>
                                     <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
-                                    <TableCell className="font-medium max-w-[300px] truncate">{c.topic}</TableCell>
+                                    <TableCell className="font-medium max-w-[300px] truncate">{c.subject}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -157,7 +157,7 @@ const StatPopover = ({ details, statType }: { details: TeacherStats | null, stat
                     {details.highestAttendanceClass ? (
                         <>
                             <h4 className="font-semibold">{details.name}</h4>
-                            <p className="font-bold text-base">{details.highestAttendanceClass.topic}</p>
+                            <p className="font-bold text-base">{details.highestAttendanceClass.subject}</p>
                             <p className="text-xs text-muted-foreground">{details.highestAttendanceClass.date}</p>
                         </>
                     ) : 'No data available'}
