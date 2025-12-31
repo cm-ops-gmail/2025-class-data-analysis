@@ -35,6 +35,8 @@ import Navbar from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useYear } from "@/contexts/year-context";
+import Footer from "@/components/footer";
 
 
 const parseNumericValue = (value: string | number | undefined | null): number => {
@@ -68,6 +70,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const { selectedYear } = useYear();
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>();
@@ -98,8 +101,23 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    const handleImport = async (url: string) => {
+    const handleImport = async () => {
       setIsLoading(true);
+      const url = selectedYear === '2026'
+        ? process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL_2026
+        : process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL_2025;
+        
+      if (!url) {
+        toast({
+          variant: "destructive",
+          title: "Configuration Error",
+          description: `Google Sheet URL for ${selectedYear} is not configured.`,
+        });
+        setData([]);
+        setIsLoading(false);
+        return;
+      }
+      
       try {
         const response = await fetch("/api/sheet", {
           method: "POST",
@@ -116,7 +134,7 @@ export default function Dashboard() {
         setData(sheetData);
         toast({
           title: "Success!",
-          description: "Data loaded from your Google Sheet.",
+          description: `Data for ${selectedYear} loaded from your Google Sheet.`,
         });
       } catch (error: any) {
         toast({
@@ -131,21 +149,9 @@ export default function Dashboard() {
         setIsLoading(false);
       }
     };
-
-    const initialSheetUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL;
-    if (initialSheetUrl) {
-      handleImport(initialSheetUrl);
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Configuration Error",
-        description:
-          "Google Sheet URL is not configured in environment variables.",
-      });
-      setIsLoading(false);
-    }
+    handleImport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedYear]);
 
   const productTypes = useMemo(
     () => [...new Set(data.map((item) => item.productType).filter(Boolean))],
@@ -264,13 +270,25 @@ export default function Dashboard() {
     }
   }, [filteredData, data.length]);
 
-  const issuePercentage = useMemo(() => {
+  const { issuePercentage, issueCount, issueBreakdown } = useMemo(() => {
     const baseData = filteredDataWithoutIssues;
     if (baseData.length === 0 || issueTypeFilters.length === 0) {
-      return 0;
+      return { issuePercentage: 0, issueCount: 0, issueBreakdown: {} };
     }
-    const issueCount = baseData.filter(item => issueTypeFilters.includes(item.issuesType)).length;
-    return (issueCount / baseData.length) * 100;
+    const breakdown: {[key: string]: number} = {};
+    let count = 0;
+    baseData.forEach(item => {
+        if (issueTypeFilters.includes(item.issuesType)) {
+            count++;
+            const product = item.productType || 'Uncategorized';
+            breakdown[product] = (breakdown[product] || 0) + 1;
+        }
+    });
+    return { 
+        issuePercentage: (count / baseData.length) * 100,
+        issueCount: count,
+        issueBreakdown: breakdown,
+    };
   }, [filteredDataWithoutIssues, issueTypeFilters]);
   
   const clearAllFilters = () => {
@@ -315,7 +333,7 @@ export default function Dashboard() {
 
   const isSameDay = (date1: Date | undefined, date2: Date | null) => {
     if (!date1 || !date2) return false;
-    return date1.getDate() === date2.getMonth() &&
+    return date1.getDate() === date2.getDate() &&
            date1.getMonth() === date2.getMonth() &&
            date1.getFullYear() === date2.getFullYear();
   };
@@ -428,7 +446,7 @@ export default function Dashboard() {
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="mb-8 space-y-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline">
-            Facebook Dashboard
+            Fb dashboard
           </h1>
           <p className="text-muted-foreground">
             An interactive view of your Google Sheet data.
@@ -912,8 +930,51 @@ export default function Dashboard() {
                 <AlertTriangle className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-destructive">
-                  {issuePercentage.toFixed(2)}%
+                <div className="flex items-center justify-between">
+                    <div className="text-2xl font-bold text-destructive">
+                      {issuePercentage.toFixed(2)}%
+                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-5 w-5"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-lg">
+                          <DialogHeader><DialogTitle>Issue Percentage Analysis</DialogTitle></DialogHeader>
+                          <div className="grid gap-4 py-4 text-sm">
+                              <div>Total Classes in View: {filteredDataWithoutIssues.length.toLocaleString()}</div>
+                              <div>Classes with Selected Issues: {issueCount.toLocaleString()}</div>
+                              <p className="font-bold border-t pt-2 mt-1">
+                                  ({issueCount.toLocaleString()} / {filteredDataWithoutIssues.length.toLocaleString()}) * 100 = {issuePercentage.toFixed(2)}%
+                              </p>
+                          </div>
+                          <Separator />
+                          <h4 className="font-semibold text-base mt-2">Product-wise Breakdown</h4>
+                          <ScrollArea className="h-48 mt-2 border rounded-md">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Product</TableHead>
+                                  <TableHead className="text-right">Issue Count</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {Object.entries(issueBreakdown).sort(([, a], [, b]) => b - a).map(([product, count]) => (
+                                  <TableRow key={product}>
+                                    <TableCell className="font-medium">{product}</TableCell>
+                                    <TableCell className="text-right">{count}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                              <TableFooter>
+                                <TableRow>
+                                    <TableCell className="font-bold">Total</TableCell>
+                                    <TableCell className="text-right font-bold">{issueCount}</TableCell>
+                                </TableRow>
+                              </TableFooter>
+                            </Table>
+                          </ScrollArea>
+                      </DialogContent>
+                    </Dialog>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   of classes in the current view have the selected issue types.
@@ -943,7 +1004,7 @@ export default function Dashboard() {
               <DataTable
                 data={filteredData}
                 allColumns={allColumns}
-                columnVisibility={columnVisibility}
+                columnVisibility={columnVisibility as Record<keyof ClassEntry, boolean>}
                 isLoading={isLoading}
               />
             </CardContent>
@@ -960,22 +1021,7 @@ export default function Dashboard() {
         </section>
 
       </main>
-      <footer className="border-t">
-        <div className="container mx-auto flex items-center justify-between px-4 py-6 text-sm text-muted-foreground">
-          <div>© 2025 10 MS Content Operations. All rights reserved.</div>
-          <div className="flex items-center gap-6">
-            <a href="#" className="transition-colors hover:text-foreground">
-              Policy Book
-            </a>
-            <a href="#" className="transition-colors hover:text-foreground">
-              Automation Projects
-            </a>
-            <a href="#" className="transition-colors hover:text-foreground">
-              Automation Project Documentation
-            </a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -1021,5 +1067,3 @@ const allColumns: {key: keyof ClassEntry, header: string, sortable?: boolean}[] 
   { key: "satisfaction", header: "Satisfaction" },
   { key: "topic", header: "Topic" },
 ];
-
-    
