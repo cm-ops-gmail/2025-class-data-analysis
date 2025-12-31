@@ -257,6 +257,14 @@ export default function Dashboard() {
       averageAttendance: averageAttendance,
     }
   }, [filteredData, data.length]);
+
+  const issuePercentage = useMemo(() => {
+    if (filteredData.length === 0 || issueTypeFilters.length === 0) {
+      return 0;
+    }
+    const issueCount = filteredData.filter(item => issueTypeFilters.includes(item.issuesType)).length;
+    return (issueCount / filteredData.length) * 100;
+  }, [filteredData, issueTypeFilters]);
   
   const clearAllFilters = () => {
     setGlobalFilter("");
@@ -300,7 +308,7 @@ export default function Dashboard() {
 
   const isSameDay = (date1: Date | undefined, date2: Date | null) => {
     if (!date1 || !date2) return false;
-    return date1.getDate() === date2.getDate() &&
+    return date1.getDate() === date2.getMonth() &&
            date1.getMonth() === date2.getMonth() &&
            date1.getFullYear() === date2.getFullYear();
   };
@@ -742,7 +750,7 @@ export default function Dashboard() {
 
         <section className="space-y-4">
            <h2 className="text-2xl font-bold tracking-tight">
-            Advanced Filtering & Column Selection
+            Advanced Filtering &amp; Column Selection
           </h2>
           <div className="flex flex-col gap-4">
             {/* Date Filter Row */}
@@ -799,6 +807,13 @@ export default function Dashboard() {
                   Apply Date Filter
                 </Button>
               )}
+               <MultiSelectFilter
+                title="Issue Types"
+                options={issueTypes.map(type => ({ value: type, label: type }))}
+                selectedValues={issueTypeFilters}
+                onSelectedValuesChange={setIssueTypeFilters}
+                triggerClassName="w-full md:w-auto"
+              />
             </div>
             
             {/* Other Filters Row */}
@@ -829,13 +844,6 @@ export default function Dashboard() {
                 options={subjects.map(subject => ({ value: subject, label: subject }))}
                 selectedValues={subjectFilters}
                 onSelectedValuesChange={setSubjectFilters}
-                triggerClassName="w-full md:w-auto"
-              />
-              <MultiSelectFilter
-                title="Issue Types"
-                options={issueTypes.map(type => ({ value: type, label: type }))}
-                selectedValues={issueTypeFilters}
-                onSelectedValuesChange={setIssueTypeFilters}
                 triggerClassName="w-full md:w-auto"
               />
 
@@ -883,6 +891,30 @@ export default function Dashboard() {
             </div>
           </div>
         </section>
+
+        {issueTypeFilters.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-2xl font-bold tracking-tight mb-4">
+              Issue Percentage
+            </h2>
+            <Card className="border-destructive/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Percentage of selected issues
+                </CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">
+                  {issuePercentage.toFixed(2)}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  of classes in the current view have the selected issue types.
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        )}
         
         <Separator className="my-8" />
         
@@ -980,4 +1012,7 @@ const allColumns: {key: keyof ClassEntry, header: string, sortable?: boolean}[] 
   { key: "liveClassIssues", header: "Live Class Issues" },
   { key: "otherTechnicalIssues", header: "Other Technical Issues" },
   { key: "satisfaction", header: "Satisfaction" },
+  { key: "topic", header: "Topic" },
 ];
+
+    
