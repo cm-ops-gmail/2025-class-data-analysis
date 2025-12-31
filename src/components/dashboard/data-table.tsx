@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -32,7 +33,7 @@ type SortConfig = {
 interface DataTableProps {
   data: ClassEntry[];
   allColumns: ColumnDef[];
-  columnVisibility: Record<keyof ClassEntry, boolean>;
+  columnVisibility: Record<string, boolean>;
   isLoading: boolean;
 }
 
@@ -194,3 +195,5 @@ export function DataTable({
     </div>
   );
 }
+
+    
