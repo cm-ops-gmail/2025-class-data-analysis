@@ -55,15 +55,16 @@ export async function POST(request: Request) {
       auth,
     });
 
+    const range = "Facebook_Dashboard";
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Central_Class_OPS",
+      range: range,
     });
 
     const rows = response.data.values;
     if (!rows || rows.length < 2) { // Need at least a header and one data row
       return NextResponse.json(
-        { error: "No data found in the 'Central_Class_OPS' sheet." },
+        { error: `No data found in the '${range}' sheet.` },
         { status: 404 }
       );
     }
@@ -77,7 +78,14 @@ export async function POST(request: Request) {
 
     // A special map for headers that don't match the standard normalization
     const specialHeaderMap: {[key: string]: keyof ClassEntry} = {
-      'totaldurationminute': 'totalDurationMinutes'
+      'teacher': 'teacher',
+      'teacher2doubtsolver1': 'teacher2',
+      'teacher3doubtsolver2': 'teacher3',
+      'totalcommentsnumber': 'totalComments',
+      'issuesdetails': 'issuesDetails',
+      'whichissueshaveyoufacedduringtheliveclass': 'liveClassIssues',
+      'besidesmentionedissueshaveyouencounteredanyothertechnicalissues': 'otherTechnicalIssues',
+      'onascaaleof1to5howsatisfiedareyouwithyourinstudioexperiencesatisfaction': 'satisfaction'
     };
 
     header.forEach((h, i) => {
@@ -88,7 +96,7 @@ export async function POST(request: Request) {
             headerMap[i] = lowerCaseKeyMap.get(normalizedHeader)!;
         }
     });
-
+    
     const data = rows.slice(1).map((row, index) => {
       const entry: Partial<ClassEntry> = { id: String(index + 1) };
       row.forEach((cellValue, i) => {
@@ -112,8 +120,11 @@ export async function POST(request: Request) {
 
     let userMessage = "An unexpected error occurred while fetching data from the sheet.";
     let statusCode = 500;
-
-    if (error.code === 'ENOTFOUND') {
+    
+    if(error.message && error.message.includes('Unable to parse range')){
+      userMessage = `Could not find the sheet tab "Facebook_Dashboard". Please ensure it exists in your Google Sheet.`;
+      statusCode = 404;
+    } else if (error.code === 'ENOTFOUND') {
         userMessage = "Could not connect to Google Sheets. Please check your network connection.";
         statusCode = 503; // Service Unavailable
     } else if (error.errors) {
@@ -144,35 +155,21 @@ function getInitialClassEntry(): ClassEntry {
       productType: '',
       course: '',
       subject: '',
-      topic: '',
-      teacher1: '',
+      teacher: '',
+      teacher1Gmail: '',
       teacher2: '',
+      teacher2Gmail: '',
       teacher3: '',
-      studio: '',
-      studioCoordinator: '',
-      opsStakeholder: '',
-      lectureSlide: '',
-      title: '',
-      caption: '',
-      crossPost: '',
-      sourcePlatform: '',
-      teacherConfirmation: '',
-      zoomLink: '',
-      zoomCredentials: '',
-      moderatorLink: '',
-      annotatedSlideLink: '',
-      classStopTimestamps: '',
-      startDelayMinutes: '',
-      totalDurationMinutes: '',
-      viewCount10Min: '',
-      viewCount40_50Min: '',
-      viewCountBeforeEnd: '',
+      teacher3Gmail: '',
+      totalDuration: '',
       highestAttendance: '',
       averageAttendance: '',
       totalComments: '',
-      classLink: '',
-      recordingLink: '',
-      classQACFeedback: '',
-      remarks: '',
+      issuesType: '',
+      issuesDetails: '',
+      slideCommunication: '',
+      liveClassIssues: '',
+      otherTechnicalIssues: '',
+      satisfaction: '',
     };
 }
