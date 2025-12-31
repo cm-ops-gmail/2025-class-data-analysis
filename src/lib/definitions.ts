@@ -1,3 +1,4 @@
+
 export type ClassEntry = {
   id: string;
   date: string;
@@ -24,8 +25,4 @@ export type ClassEntry = {
   liveClassIssues: string;
   otherTechnicalIssues: string;
   satisfaction: string;
-  // Deprecated fields that might still be in old data, keep for compatibility if needed
-  // but they are not in the new sheet
-  teacher1?: string; 
-  totalDurationMinutes?: string;
 };
