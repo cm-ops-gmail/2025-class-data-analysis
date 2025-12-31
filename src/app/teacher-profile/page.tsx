@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { ClassEntry } from '@/lib/definitions';
+import type { ClassEntry, AppClassEntry } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut, Package, Info, User, X } from 'lucide-react';
+import { Award, Clock, Star, UserCheck, BookOpen, Users, LogOut, Package, Info, User, X, BarChart, TrendingUp, PieChart } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -24,6 +24,9 @@ import { MultiSelectFilter } from '@/components/dashboard/multi-select-filter';
 import { TeacherComparison } from '@/components/dashboard/teacher-comparison';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import { useYear } from '@/contexts/year-context';
+import Footer from '@/components/footer';
 
 const parseNumericValue = (
   value: string | number | undefined | null
@@ -31,27 +34,42 @@ const parseNumericValue = (
   if (value === null || value === undefined) return 0;
   const stringValue = String(value).trim();
   if (stringValue === '' || stringValue === '-') return 0;
-  const cleanedValue = stringValue.replace(/,/g, '');
+  const cleanedValue = stringValue.replace(/,|\%/g, '');
   const numberValue = parseFloat(cleanedValue);
   return isNaN(numberValue) ? 0 : numberValue;
 };
 
+type CombinedClassEntry = Partial<ClassEntry> & Partial<AppClassEntry> & { id: string, dataSource: 'fb' | 'app' };
+
 type CourseBreakdown = {
-  [courseName: string]: number;
+  [courseName: string]: {
+    fb: number;
+    app: number;
+    total: number;
+  };
 }
+
+type StatDetail = {
+  fb: number;
+  app: number;
+  total: number;
+};
 
 type TeacherStats = {
   name: string;
-  classCount: number;
-  totalDuration: number;
-  totalAverageAttendance: number;
-  avgAttendance: number;
-  highestPeakAttendance: number;
-  classes: ClassEntry[];
-  highestAttendanceClass: ClassEntry | null;
+  classCount: StatDetail;
+  totalDuration: StatDetail;
+  totalAverageAttendance: StatDetail;
+  avgAttendance: StatDetail;
+  highestPeakAttendance: StatDetail;
+  classes: CombinedClassEntry[];
+  highestAttendanceClass: CombinedClassEntry | null;
   courseBreakdown: CourseBreakdown;
   uniqueCourses: string[];
   uniqueProductTypes: string[];
+  averageRating: number;
+  ratedClassesCount: number;
+  ratedClasses: (AppClassEntry & { dataSource: 'app' })[];
 };
 
 const formatDuration = (totalMinutes: number) => {
@@ -68,12 +86,17 @@ const formatDuration = (totalMinutes: number) => {
     return result.trim() || '0 min';
   };
 
+const isAppEntry = (entry: CombinedClassEntry): entry is AppClassEntry & { dataSource: 'app' } => entry.dataSource === 'app';
+const isFbEntry = (entry: CombinedClassEntry): entry is ClassEntry & { dataSource: 'fb' } => entry.dataSource === 'fb';
+
 export default function TeacherProfilePage() {
-  const [data, setData] = useState<ClassEntry[]>([]);
+  const [fbData, setFbData] = useState<ClassEntry[]>([]);
+  const [appData, setAppData] = useState<AppClassEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
+  const { selectedYear } = useYear();
 
   useEffect(() => {
     const session = localStorage.getItem('dashboard_session');
@@ -82,108 +105,206 @@ export default function TeacherProfilePage() {
       return;
     }
 
-    const handleImport = async (url: string) => {
+    const handleImport = async () => {
       setIsLoading(true);
-      try {
-        const response = await fetch('/api/sheet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sheetUrl: url }),
-        });
+      const url = selectedYear === '2026' 
+          ? process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL_2026
+          : process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL_2025;
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to fetch data from sheet.');
+      if (!url) {
+        toast({
+          variant: "destructive",
+          title: "Configuration Error",
+          description: `Google Sheet URL for ${selectedYear} is not configured.`,
+        });
+        setFbData([]);
+        setAppData([]);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const [fbResponse, appResponse] = await Promise.all([
+            fetch('/api/sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheetUrl: url }),
+            }),
+            fetch('/api/app-sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheetUrl: url }),
+            }),
+        ]);
+
+        if (!fbResponse.ok) {
+          const error = await fbResponse.json();
+          throw new Error(`Fb-Data: ${error.error || 'Failed to fetch'}`);
+        }
+        if (!appResponse.ok) {
+          const error = await appResponse.json();
+          throw new Error(`App-Data: ${error.error || 'Failed to fetch'}`);
         }
 
-        const sheetData = await response.json();
-        setData(sheetData);
+        const fbSheetData = await fbResponse.json();
+        const appSheetData = await appResponse.json();
+        
+        setFbData(fbSheetData);
+        setAppData(appSheetData);
+        toast({
+          title: "Success!",
+          description: `Data for ${selectedYear} loaded successfully.`,
+        });
+
       } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Uh oh! Something went wrong.',
-          description:
-            error.message ||
-            'Could not import data. Please check the URL and try again.',
+          description: error.message || 'Could not import data. Please check the URL and try again.',
         });
-        setData([]);
+        setFbData([]);
+        setAppData([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    const initialSheetUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL;
-    if (initialSheetUrl) {
-      handleImport(initialSheetUrl);
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Configuration Error',
-        description:
-          'Google Sheet URL is not configured in environment variables.',
-      });
-      setIsLoading(false);
-    }
+    handleImport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [selectedYear]);
   
+  const combinedData = useMemo(() => {
+    const fbMarked = fbData.map(d => ({ ...d, id: `fb-${d.id}`, dataSource: 'fb' as const }));
+    const appMarked = appData.map(d => ({ ...d, id: `app-${d.id}`, dataSource: 'app' as const }));
+    return [...fbMarked, ...appMarked];
+  }, [fbData, appData]);
+
   const allTeachers = useMemo(() => {
     const teacherSet = new Set<string>();
-    data.forEach(item => {
+    combinedData.forEach(item => {
         if(item.teacher) teacherSet.add(item.teacher);
     });
     return Array.from(teacherSet).sort();
-  }, [data]);
+  }, [combinedData]);
+
+    const platformTotals = useMemo(() => {
+    const totals = {
+      classCount: combinedData.length,
+      totalDuration: 0,
+      totalAverageAttendance: 0,
+    };
+
+    combinedData.forEach(item => {
+      if (isFbEntry(item)) {
+        totals.totalDuration += parseNumericValue(item.totalDuration);
+        totals.totalAverageAttendance += parseNumericValue(item.averageAttendance);
+      } else if (isAppEntry(item)) {
+        totals.totalDuration += parseNumericValue(item.classDuration);
+        totals.totalAverageAttendance += parseNumericValue(item.totalAttendance);
+      }
+    });
+
+    return totals;
+  }, [combinedData]);
 
   const aggregatedStats = useMemo(() => {
     if (selectedTeachers.length === 0) {
       return null;
     }
 
-    const relevantClasses = data.filter(item => selectedTeachers.includes(item.teacher));
+    const relevantClasses = combinedData.filter(item => selectedTeachers.includes(item.teacher ?? ''));
 
     if (relevantClasses.length === 0) return null;
+    
+    const initialStat = { fb: 0, app: 0, total: 0 };
 
     const stats: TeacherStats = {
       name: selectedTeachers.join(', '),
-      classCount: 0,
-      totalDuration: 0,
-      totalAverageAttendance: 0,
-      avgAttendance: 0,
-      highestPeakAttendance: 0,
+      classCount: { ...initialStat },
+      totalDuration: { ...initialStat },
+      totalAverageAttendance: { ...initialStat },
+      avgAttendance: { ...initialStat },
+      highestPeakAttendance: { ...initialStat },
       classes: [],
       highestAttendanceClass: null,
       courseBreakdown: {},
       uniqueCourses: [],
       uniqueProductTypes: [],
+      averageRating: 0,
+      ratedClassesCount: 0,
+      ratedClasses: [],
     };
 
+    let totalRating = 0;
+    let highestPeak = 0;
+
     relevantClasses.forEach(item => {
-        stats.classCount += 1;
-        stats.totalDuration += parseNumericValue(item.totalDuration);
-        stats.totalAverageAttendance += parseNumericValue(item.averageAttendance);
         stats.classes.push(item);
         
-        if (item.course) {
-            stats.courseBreakdown[item.course] = (stats.courseBreakdown[item.course] || 0) + 1;
+        let peakAttendance = 0;
+        let courseName: string | undefined;
+        
+        if (isFbEntry(item)) {
+            stats.classCount.fb += 1;
+            stats.totalDuration.fb += parseNumericValue(item.totalDuration);
+            stats.totalAverageAttendance.fb += parseNumericValue(item.averageAttendance);
+            peakAttendance = parseNumericValue(item.highestAttendance);
+            courseName = item.course;
+            if (courseName) {
+              if (!stats.courseBreakdown[courseName]) {
+                stats.courseBreakdown[courseName] = { fb: 0, app: 0, total: 0 };
+              }
+              stats.courseBreakdown[courseName].fb++;
+              stats.courseBreakdown[courseName].total++;
+            }
+        } else if (isAppEntry(item)) {
+            stats.classCount.app += 1;
+            stats.totalDuration.app += parseNumericValue(item.classDuration);
+            stats.totalAverageAttendance.app += parseNumericValue(item.totalAttendance);
+            peakAttendance = parseNumericValue(item.totalAttendance);
+            courseName = item.subject;
+            
+            const rating = parseNumericValue(item.averageClassRating);
+            if (rating > 0) {
+                totalRating += rating;
+                stats.ratedClassesCount++;
+                stats.ratedClasses.push(item);
+            }
+            if (courseName) {
+              if (!stats.courseBreakdown[courseName]) {
+                stats.courseBreakdown[courseName] = { fb: 0, app: 0, total: 0 };
+              }
+              stats.courseBreakdown[courseName].app++;
+              stats.courseBreakdown[courseName].total++;
+            }
         }
 
-        const peakAttendance = parseNumericValue(item.highestAttendance);
-        if (peakAttendance > stats.highestPeakAttendance) {
-            stats.highestPeakAttendance = peakAttendance;
+        if (peakAttendance > highestPeak) {
+            highestPeak = peakAttendance;
             stats.highestAttendanceClass = item;
+            stats.highestPeakAttendance.total = peakAttendance;
         }
     });
+    
+    stats.classCount.total = stats.classCount.fb + stats.classCount.app;
+    stats.totalDuration.total = stats.totalDuration.fb + stats.totalDuration.app;
+    stats.totalAverageAttendance.total = stats.totalAverageAttendance.fb + stats.totalAverageAttendance.app;
+    
+    stats.avgAttendance.fb = stats.classCount.fb > 0 ? Math.round(stats.totalAverageAttendance.fb / stats.classCount.fb) : 0;
+    stats.avgAttendance.app = stats.classCount.app > 0 ? Math.round(stats.totalAverageAttendance.app / stats.classCount.app) : 0;
+    stats.avgAttendance.total = stats.classCount.total > 0 ? Math.round(stats.totalAverageAttendance.total / stats.classCount.total) : 0;
+    
+    stats.averageRating = stats.ratedClassesCount > 0 ? totalRating / stats.ratedClassesCount : 0;
+    
+    const allCourses = Object.keys(stats.courseBreakdown);
+    stats.uniqueCourses = allCourses;
 
-    stats.avgAttendance =
-        stats.classCount > 0
-        ? Math.round(stats.totalAverageAttendance / stats.classCount)
-        : 0;
-    stats.uniqueCourses = [...new Set(stats.classes.map(c => c.course).filter(Boolean))];
-    stats.uniqueProductTypes = [...new Set(stats.classes.map(c => c.productType).filter(Boolean))];
+    const allProductTypes = relevantClasses.map(c => isFbEntry(c) ? c.productType : c.product).filter(Boolean);
+    stats.uniqueProductTypes = [...new Set(allProductTypes)];
+
 
     return stats;
-  }, [selectedTeachers, data]);
+  }, [selectedTeachers, combinedData]);
 
   const handleLogout = () => {
     localStorage.removeItem('dashboard_session');
@@ -191,6 +312,69 @@ export default function TeacherProfilePage() {
   };
   
   const isAnyTeacherSelected = selectedTeachers.length > 0;
+
+  const StatCard = ({ icon: Icon, title, stat, format, popoverContent, colorClass }: { icon: React.ElementType, title: string, stat: StatDetail | number, format?: (value: number) => string, popoverContent: React.ReactNode, colorClass: string }) => {
+    const isDetailed = typeof stat === 'object' && stat !== null;
+    const total = isDetailed ? stat.total : stat;
+    const formattedTotal = format ? format(total) : total.toLocaleString();
+
+    return (
+        <div className={cn(
+            "flex items-start gap-4 rounded-lg border p-4 transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1",
+            `border-${colorClass}/50 hover:border-${colorClass}`
+        )}>
+            <Icon className={cn("h-8 w-8 mt-1", `text-${colorClass}`)} />
+            <div className="flex-1">
+                <p className="text-muted-foreground">{title}</p>
+                <p className="text-2xl font-bold">{formattedTotal}</p>
+                {isDetailed && (
+                    <p className="text-xs text-muted-foreground">
+                        (Fb: {stat.fb.toLocaleString()} | App: {stat.app.toLocaleString()})
+                    </p>
+                )}
+            </div>
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
+                </DialogTrigger>
+                {popoverContent}
+            </Dialog>
+        </div>
+    );
+};
+const ContributionListItem = ({ icon: Icon, title, teacherValue, platformTotal, colorClass }: { icon: React.ElementType, title: string, teacherValue: number, platformTotal: number, colorClass: string }) => {
+    const percentage = platformTotal > 0 ? (teacherValue / platformTotal) * 100 : 0;
+    
+    return (
+        <li className="flex items-center gap-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
+            <div className="flex items-center gap-3">
+                <Icon className={cn("h-5 w-5", `text-${colorClass}`)} />
+                <span className="font-medium">{title}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className={cn("text-lg font-bold", `text-${colorClass}`)}>{percentage.toFixed(2)}%</span>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Contribution Calculation</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4 text-sm">
+                            <div>Teacher's Total: <span className="font-bold">{teacherValue.toLocaleString()}</span></div>
+                            <div>Platform Total: <span className="font-bold">{platformTotal.toLocaleString()}</span></div>
+                            <p className="font-bold border-t pt-2 mt-1 text-base">
+                                ({teacherValue.toLocaleString()} / {platformTotal.toLocaleString()}) * 100 = {percentage.toFixed(2)}%
+                            </p>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </li>
+    );
+};
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -210,7 +394,7 @@ export default function TeacherProfilePage() {
             Teacher Profile
           </h1>
           <p className="text-muted-foreground">
-            Select teachers to view their combined performance statistics.
+            Select teachers to view their combined performance statistics from Fb and APP dashboards.
           </p>
         </div>
 
@@ -255,8 +439,8 @@ export default function TeacherProfilePage() {
         </div>
         
         {isLoading && selectedTeachers.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                {Array.from({length: 4}).map((_, i) => <Skeleton key={i} className="h-36" />)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({length: 7}).map((_, i) => <Skeleton key={i} className="h-36" />)}
             </div>
         )}
         
@@ -267,207 +451,210 @@ export default function TeacherProfilePage() {
                         <CardTitle className="text-2xl">{aggregatedStats.name}</CardTitle>
                         <CardDescription>Aggregated Performance Overview</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-4 rounded-lg border p-4 transition-all duration-300 ease-in-out hover:shadow-lg border-chart-1/50 hover:border-chart-1 hover:-translate-y-1">
-                                <Award className="h-8 w-8 text-chart-1" />
-                                <div className="flex-1 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-muted-foreground">Total Classes Taught</p>
-                                        <p className="text-2xl font-bold">{aggregatedStats.classCount}</p>
-                                    </div>
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-2xl">
-                                            <DialogHeader>
-                                                <DialogTitle>Classes Taught by {aggregatedStats.name}</DialogTitle>
-                                            </DialogHeader>
-                                            <ScrollArea className="h-96 mt-4">
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead>Date</TableHead>
-                                                            <TableHead>Topic</TableHead>
-                                                            <TableHead>Course</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {aggregatedStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
-                                                            <TableRow key={c.id}>
-                                                                <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
-                                                                <TableCell className="font-medium max-w-xs truncate">{c.subject}</TableCell>
-                                                                <TableCell>{c.course}</TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                            </ScrollArea>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4 transition-all duration-300 ease-in-out hover:shadow-lg border-chart-2/50 hover:border-chart-2 hover:-translate-y-1">
-                                <Users className="h-8 w-8 text-chart-2" />
-                                <div className="flex-1 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-muted-foreground">Combined Avg. Attendance</p>
-                                        <p className="text-2xl font-bold">{aggregatedStats.avgAttendance.toLocaleString()}</p>
-                                    </div>
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-md">
-                                            <DialogHeader>
-                                                <DialogTitle>Average Attendance Calculation</DialogTitle>
-                                            </DialogHeader>
-                                            <div className="grid gap-4 py-4 text-sm">
-                                                <div className="flex items-center gap-1.5">
-                                                    Total Combined Attendance:
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
-                                                            <Button variant="link" size="sm" className="p-0 h-auto text-sm">{aggregatedStats.totalAverageAttendance.toLocaleString()}</Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="sm:max-w-2xl">
-                                                            <DialogHeader>
-                                                                <DialogTitle>Total Attendance Breakdown</DialogTitle>
-                                                            </DialogHeader>
-                                                            <ScrollArea className="h-96 mt-4">
-                                                                <Table>
-                                                                    <TableHeader>
-                                                                        <TableRow>
-                                                                            <TableHead>Class Topic</TableHead>
-                                                                            <TableHead>Course</TableHead>
-                                                                            <TableHead className="text-right">Attendance</TableHead>
-                                                                        </TableRow>
-                                                                    </TableHeader>
-                                                                    <TableBody>
-                                                                        {aggregatedStats.classes.map(item => (
-                                                                            <TableRow key={item.id}>
-                                                                                <TableCell className="font-medium max-w-xs truncate">{item.subject}</TableCell>
-                                                                                <TableCell>{item.course}</TableCell>
-                                                                                <TableCell className="text-right">{parseNumericValue(item.averageAttendance).toLocaleString()}</TableCell>
-                                                                            </TableRow>
-                                                                        ))}
-                                                                    </TableBody>
-                                                                    <TableFooter>
-                                                                        <TableRow>
-                                                                            <TableCell colSpan={2} className="font-bold">Total</TableCell>
-                                                                            <TableCell className="text-right font-bold">{aggregatedStats.totalAverageAttendance.toLocaleString()}</TableCell>
-                                                                        </TableRow>
-                                                                    </TableFooter>
-                                                                </Table>
-                                                            </ScrollArea>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                </div>
-                                                <div>
-                                                    Total Classes: {aggregatedStats.classCount.toLocaleString()}
-                                                </div>
-                                                <p className="font-bold border-t pt-2 mt-1">
-                                                    {aggregatedStats.totalAverageAttendance.toLocaleString()} / {aggregatedStats.classCount > 0 ? aggregatedStats.classCount.toLocaleString() : 1} = {aggregatedStats.avgAttendance.toLocaleString()}
+                    <CardContent className="space-y-6">
+                        <ul className="space-y-3">
+                            <ContributionListItem
+                                icon={PieChart}
+                                title="Contributed to platform's total classes"
+                                teacherValue={aggregatedStats.classCount.total}
+                                platformTotal={platformTotals.classCount}
+                                colorClass="chart-1"
+                            />
+                            <ContributionListItem
+                                icon={Users}
+                                title="Contributed to platform's total avg attendance"
+                                teacherValue={aggregatedStats.totalAverageAttendance.total}
+                                platformTotal={platformTotals.totalAverageAttendance}
+                                colorClass="chart-2"
+                            />
+                            <ContributionListItem
+                                icon={Clock}
+                                title="Contributed to platform's total duration"
+                                teacherValue={aggregatedStats.totalDuration.total}
+                                platformTotal={platformTotals.totalDuration}
+                                colorClass="chart-4"
+                            />
+                        </ul>
+
+                        <Separator />
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                           <StatCard 
+                                icon={Award}
+                                title="Total Classes Taught"
+                                stat={aggregatedStats.classCount}
+                                colorClass="chart-1"
+                                popoverContent={
+                                    <DialogContent className="max-w-4xl">
+                                        <DialogHeader>
+                                            <DialogTitle>Classes Taught by {aggregatedStats.name}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <h3 className="font-semibold mb-2">Fb Classes ({aggregatedStats.classCount.fb})</h3>
+                                                <ScrollArea className="h-96 mt-4 pr-4">
+                                                    <Table>
+                                                        <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Topic</TableHead></TableRow></TableHeader>
+                                                        <TableBody>
+                                                            {aggregatedStats.classes.filter(isFbEntry).sort((a,b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()).map(c => (
+                                                                <TableRow key={c.id}><TableCell><Badge variant="secondary">{c.date}</Badge></TableCell><TableCell className="font-medium max-w-xs truncate">{c.subject}</TableCell></TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </ScrollArea>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold mb-2">APP Classes ({aggregatedStats.classCount.app})</h3>
+                                                 <ScrollArea className="h-96 mt-4 pr-4">
+                                                    <Table>
+                                                        <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Topic</TableHead></TableRow></TableHeader>
+                                                        <TableBody>
+                                                            {aggregatedStats.classes.filter(isAppEntry).sort((a,b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()).map(c => (
+                                                                <TableRow key={c.id}><TableCell><Badge variant="secondary">{c.date}</Badge></TableCell><TableCell className="font-medium max-w-xs truncate">{c.classTopic}</TableCell></TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </ScrollArea>
+                                            </div>
+                                        </div>
+                                    </DialogContent>
+                                }
+                           />
+                            <StatCard
+                                icon={Users}
+                                title="Combined Avg. Attendance"
+                                stat={aggregatedStats.avgAttendance}
+                                colorClass="chart-2"
+                                popoverContent={
+                                    <DialogContent className="sm:max-w-2xl">
+                                        <DialogHeader><DialogTitle>Average Attendance Calculation</DialogTitle></DialogHeader>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 text-sm">
+                                            <div className="space-y-2 rounded-lg border p-4">
+                                                <h3 className="font-semibold text-center mb-2">Fb Data</h3>
+                                                <p>Total Fb Attendance: {aggregatedStats.totalAverageAttendance.fb.toLocaleString()}</p>
+                                                <p>Total Fb Classes: {aggregatedStats.classCount.fb.toLocaleString()}</p>
+                                                <p className="font-bold border-t pt-2 mt-2">
+                                                    Avg: {aggregatedStats.avgAttendance.fb.toLocaleString()}
                                                 </p>
                                             </div>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </div>
-                             <div className="flex items-center gap-4 rounded-lg border p-4 transition-all duration-300 ease-in-out hover:shadow-lg border-chart-3/50 hover:border-chart-3 hover:-translate-y-1">
-                                <BookOpen className="h-8 w-8 text-chart-3" />
-                                <div className="flex-1 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-muted-foreground">Unique Courses Taught</p>
-                                        <p className="text-2xl font-bold">{aggregatedStats.uniqueCourses.length}</p>
-                                    </div>
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Unique Courses by {aggregatedStats.name}</DialogTitle>
-                                            </DialogHeader>
-                                            <ScrollArea className="h-72 mt-4">
-                                                <div className="flex flex-wrap gap-2 p-1">
-                                                    {aggregatedStats.uniqueCourses.map(c => <Badge key={c} variant="secondary" className="text-base">{c}</Badge>)}
-                                                </div>
-                                            </ScrollArea>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4 transition-all duration-300 ease-in-out hover:shadow-lg border-chart-6/50 hover:border-chart-6 hover:-translate-y-1">
-                                <Package className="h-8 w-8 text-chart-6" />
-                                <div className="flex-1 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-muted-foreground">Unique Product Types</p>
-                                        <p className="text-2xl font-bold">{aggregatedStats.uniqueProductTypes.length}</p>
-                                    </div>
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Unique Product Types by {aggregatedStats.name}</DialogTitle>
-                                            </DialogHeader>
-                                            <ScrollArea className="h-72 mt-4">
-                                                <div className="flex flex-wrap gap-2 p-1">
-                                                    {aggregatedStats.uniqueProductTypes.map(p => <Badge key={p} variant="secondary" className="text-base">{p}</Badge>)}
-                                                </div>
-                                            </ScrollArea>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4 col-span-1 lg:col-span-1 transition-all duration-300 ease-in-out hover:shadow-lg border-chart-5/50 hover:border-chart-5 hover:-translate-y-1">
-                                <Star className="h-8 w-8 text-chart-5" />
-                                <div className="flex-1 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-muted-foreground">Highest Peak Attendance</p>
-                                        <p className="text-2xl font-bold">{aggregatedStats.highestPeakAttendance.toLocaleString()}</p>
-                                    </div>
-                                    {aggregatedStats.highestAttendanceClass && (
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto max-w-xs">
-                                                <div className="space-y-1">
-                                                  <h4 className="font-semibold">Highest Attendance Class</h4>
-                                                  <p className="text-sm">
-                                                      {aggregatedStats.highestAttendanceClass.subject}
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground">
-                                                      by {aggregatedStats.highestAttendanceClass.teacher} on {aggregatedStats.highestAttendanceClass.date}
-                                                  </p>
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 rounded-lg border p-4 transition-all duration-300 ease-in-out hover:shadow-lg border-chart-4/50 hover:border-chart-4 hover:-translate-y-1">
-                                <Clock className="h-8 w-8 text-chart-4" />
-                                 <div className="flex-1 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-muted-foreground">Total Duration</p>
-                                        <p className="text-2xl font-bold">{aggregatedStats.totalDuration.toLocaleString()} min</p>
-                                    </div>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                             <Button variant="ghost" size="icon"><Info className="h-4 w-4" /></Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="text-sm w-auto" side="top" align="end">
-                                            <div className="font-bold">
-                                            {formatDuration(aggregatedStats.totalDuration)}
+                                            <div className="space-y-2 rounded-lg border p-4">
+                                                <h3 className="font-semibold text-center mb-2">App Data</h3>
+                                                <p>Total App Attendance: {aggregatedStats.totalAverageAttendance.app.toLocaleString()}</p>
+                                                <p>Total App Classes: {aggregatedStats.classCount.app.toLocaleString()}</p>
+                                                <p className="font-bold border-t pt-2 mt-2">
+                                                    Avg: {aggregatedStats.avgAttendance.app.toLocaleString()}
+                                                </p>
                                             </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                            </div>
+                                        </div>
+                                        <div className="space-y-2 rounded-lg border bg-muted/50 p-4 mt-4">
+                                             <h3 className="font-semibold text-center mb-2">Combined</h3>
+                                             <p>Total Combined Attendance: {aggregatedStats.totalAverageAttendance.total.toLocaleString()}</p>
+                                             <p>Total Combined Classes: {aggregatedStats.classCount.total.toLocaleString()}</p>
+                                             <p className="font-bold border-t pt-2 mt-2">
+                                                Overall Avg: {aggregatedStats.avgAttendance.total.toLocaleString()}
+                                             </p>
+                                        </div>
+                                    </DialogContent>
+                                }
+                            />
+                            <StatCard
+                                icon={BookOpen}
+                                title="Unique Courses Taught"
+                                stat={aggregatedStats.uniqueCourses.length}
+                                colorClass="chart-3"
+                                popoverContent={
+                                    <DialogContent>
+                                        <DialogHeader><DialogTitle>Unique Courses by {aggregatedStats.name}</DialogTitle></DialogHeader>
+                                        <ScrollArea className="h-72 mt-4">
+                                            <div className="flex flex-wrap gap-2 p-1">
+                                                {aggregatedStats.uniqueCourses.map(c => <Badge key={c} variant="secondary" className="text-base">{c}</Badge>)}
+                                            </div>
+                                        </ScrollArea>
+                                    </DialogContent>
+                                }
+                            />
+                            <StatCard
+                                icon={Package}
+                                title="Unique Product Types"
+                                stat={aggregatedStats.uniqueProductTypes.length}
+                                colorClass="chart-4"
+                                popoverContent={
+                                    <DialogContent>
+                                        <DialogHeader><DialogTitle>Unique Product Types by {aggregatedStats.name}</DialogTitle></DialogHeader>
+                                        <ScrollArea className="h-72 mt-4">
+                                            <div className="flex flex-wrap gap-2 p-1">
+                                                {aggregatedStats.uniqueProductTypes.map(p => <Badge key={p} variant="secondary" className="text-base">{p}</Badge>)}
+                                            </div>
+                                        </ScrollArea>
+                                    </DialogContent>
+                                }
+                            />
+                            <StatCard
+                                icon={Star}
+                                title="Highest Peak Attendance"
+                                stat={aggregatedStats.highestPeakAttendance.total}
+                                colorClass="chart-5"
+                                popoverContent={
+                                     <DialogContent>
+                                        <DialogHeader><DialogTitle>Highest Attendance Class</DialogTitle></DialogHeader>
+                                        {aggregatedStats.highestAttendanceClass && (
+                                            <div className="space-y-1 p-4">
+                                                <h4 className="font-semibold text-lg">{aggregatedStats.highestAttendanceClass.subject ?? (aggregatedStats.highestAttendanceClass as AppClassEntry).classTopic}</h4>
+                                                <p className="text-sm">
+                                                    by {aggregatedStats.highestAttendanceClass.teacher}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {aggregatedStats.highestAttendanceClass.date} ({aggregatedStats.highestAttendanceClass.dataSource?.toUpperCase()})
+                                                </p>
+                                            </div>
+                                        )}
+                                     </DialogContent>
+                                }
+                            />
+                             <StatCard
+                                icon={Clock}
+                                title="Total Duration (min)"
+                                stat={aggregatedStats.totalDuration}
+                                colorClass="chart-6"
+                                popoverContent={
+                                     <DialogContent className="sm:max-w-md">
+                                        <DialogHeader><DialogTitle>Total Duration</DialogTitle></DialogHeader>
+                                        <div className="font-bold text-lg p-4">{formatDuration(aggregatedStats.totalDuration.total)}</div>
+                                     </DialogContent>
+                                }
+                            />
+                            <StatCard
+                                icon={BarChart}
+                                title="Average Rating"
+                                stat={aggregatedStats.averageRating}
+                                format={(val) => val.toFixed(2)}
+                                colorClass="chart-1"
+                                popoverContent={
+                                    <DialogContent className="sm:max-w-2xl">
+                                        <DialogHeader><DialogTitle>Average Rating for {aggregatedStats.name}</DialogTitle></DialogHeader>
+                                        <p className="text-sm text-muted-foreground px-6">Rating is based on {aggregatedStats.ratedClassesCount} rated classes from APP Dashboard only.</p>
+                                        <ScrollArea className="h-96 mt-4">
+                                          <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Date</TableHead>
+                                                    <TableHead>Class Topic</TableHead>
+                                                    <TableHead className="text-right">Rating</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {aggregatedStats.ratedClasses.sort((a,b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()).map(c => (
+                                                    <TableRow key={c.id}>
+                                                        <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
+                                                        <TableCell className="font-medium max-w-xs truncate">{c.classTopic}</TableCell>
+                                                        <TableCell className="text-right font-bold">{parseNumericValue(c.averageClassRating).toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                          </Table>
+                                        </ScrollArea>
+                                    </DialogContent>
+                                }
+                            />
                         </div>
                     </CardContent>
                 </Card>
@@ -476,34 +663,49 @@ export default function TeacherProfilePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Course Breakdown</CardTitle>
+                            <CardDescription>Number of classes taught per course/subject</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Course</TableHead>
-                                        <TableHead className="text-right">Classes Taught</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {Object.entries(aggregatedStats.courseBreakdown).sort(([, a], [, b]) => b - a).map(([course, count]) => (
-                                        <TableRow key={course}>
-                                            <TableCell className="font-medium">{course}</TableCell>
-                                            <TableCell className="text-right font-bold">{count}</TableCell>
+                            <ScrollArea className="h-96">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Course / Subject</TableHead>
+                                            <TableHead className="text-right">Classes Taught</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                                <TableFooter>
-                                    <TableRow>
-                                        <TableCell className="font-bold">Total</TableCell>
-                                        <TableCell className="text-right font-bold">{aggregatedStats.classCount}</TableCell>
-                                    </TableRow>
-                                </TableFooter>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {Object.entries(aggregatedStats.courseBreakdown).sort(([, a], [, b]) => b.total - a.total).map(([course, count]) => (
+                                            <TableRow key={course}>
+                                                <TableCell className="font-medium">{course}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <span className="font-bold">{count.total}</span>
+                                                        <div className="flex items-center text-xs text-muted-foreground gap-1">
+                                                            {count.fb > 0 && <Badge variant="secondary">Fb: {count.fb}</Badge>}
+                                                            {count.app > 0 && <Badge variant="default">App: {count.app}</Badge>}
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                    <TableFooter>
+                                        <TableRow>
+                                            <TableCell className="font-bold">Total Classes</TableCell>
+                                            <TableCell className="text-right font-bold">{aggregatedStats.classCount.total}</TableCell>
+                                        </TableRow>
+                                    </TableFooter>
+                                </Table>
+                            </ScrollArea>
                         </CardContent>
                     </Card>
 
                     <Card>
+                        <CardHeader>
+                            <CardTitle>All Classes</CardTitle>
+                            <CardDescription>All classes from both platforms</CardDescription>
+                        </CardHeader>
                       <CardContent className="p-0">
                         <style>{`
                           .custom-scrollbar::-webkit-scrollbar {
@@ -533,20 +735,22 @@ export default function TeacherProfilePage() {
                                 <TableHead>Date</TableHead>
                                 <TableHead>Teacher</TableHead>
                                 <TableHead>Topic</TableHead>
-                                <TableHead>Course</TableHead>
-                                <TableHead className="text-right">Avg. Attendance</TableHead>
-                                <TableHead className="text-right">Peak Attendance</TableHead>
+                                <TableHead>Source</TableHead>
+                                <TableHead className="text-right">Attendance</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {aggregatedStats.classes.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(c => (
+                              {aggregatedStats.classes.sort((a,b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()).map(c => (
                                 <TableRow key={c.id}>
                                   <TableCell><Badge variant="secondary">{c.date}</Badge></TableCell>
                                   <TableCell>{c.teacher}</TableCell>
-                                  <TableCell className="font-medium max-w-[200px] truncate">{c.subject}</TableCell>
-                                  <TableCell>{c.course}</TableCell>
-                                  <TableCell className="text-right">{parseNumericValue(c.averageAttendance).toLocaleString()}</TableCell>
-                                  <TableCell className="text-right">{parseNumericValue(c.highestAttendance).toLocaleString()}</TableCell>
+                                  <TableCell className="font-medium max-w-[200px] truncate">{isFbEntry(c) ? c.subject : c.classTopic}</TableCell>
+                                   <TableCell>
+                                    <Badge variant={c.dataSource === 'app' ? 'default' : 'secondary'}>
+                                        {c.dataSource?.toUpperCase()}
+                                    </Badge>
+                                   </TableCell>
+                                  <TableCell className="text-right">{parseNumericValue(isAppEntry(c) ? c.totalAttendance : c.averageAttendance).toLocaleString()}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
@@ -560,25 +764,10 @@ export default function TeacherProfilePage() {
         
         <Separator />
         
-        <TeacherComparison data={data} allTeachers={allTeachers} />
+        <TeacherComparison data={combinedData} allTeachers={allTeachers} />
 
       </main>
-      <footer className="border-t">
-        <div className="container mx-auto flex items-center justify-between px-4 py-6 text-sm text-muted-foreground">
-          <div>© 2025 10 MS Content Operations. All rights reserved.</div>
-          <div className="flex items-center gap-6">
-            <a href="#" className="transition-colors hover:text-foreground">
-              Policy Book
-            </a>
-            <a href="#" className="transition-colors hover:text-foreground">
-              Automation Projects
-            </a>
-            <a href="#" className="transition-colors hover:text-foreground">
-              Automation Project Documentation
-            </a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
