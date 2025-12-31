@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { DataTable } from "@/components/dashboard/data-table";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X, LogOut, Calendar } from "lucide-react";
+import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X, LogOut, Calendar, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -277,12 +277,14 @@ export default function Dashboard() {
         
     const uniqueCourses = [...new Set(activeData.map(item => item.course).filter(Boolean))];
     const uniqueProductTypes = [...new Set(activeData.map(item => item.productType).filter(Boolean))];
+    const uniqueTeachers = [...new Set(activeData.map(item => item.teacher).filter(Boolean))];
 
     return {
       total: data.length,
       filtered: activeData.length,
       courses: uniqueCourses,
       productTypes: uniqueProductTypes,
+      teachers: uniqueTeachers,
       totalDuration: Math.round(totalDuration),
       highestAttendance: highestAttendance,
       topClass: topClass,
@@ -510,7 +512,7 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold tracking-tight mb-4">
             Data Analysis of Classes
           </h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="border-chart-1/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -756,6 +758,44 @@ export default function Dashboard() {
                 </p>
               </CardContent>
             </Card>
+             <Card className="border-chart-2/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Unique Teachers
+                </CardTitle>
+                <User className="h-4 w-4 text-chart-2" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-chart-2">{summary.teachers.length}</div>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-5 w-5">
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto max-w-[300px]" side="top" align="end">
+                         <div className="space-y-2">
+                            <h4 className="font-medium leading-none">Unique Teachers</h4>
+                            <p className="text-xs text-muted-foreground">
+                                List of unique teachers in the current view.
+                            </p>
+                        </div>
+                        <ScrollArea className="h-48 mt-4">
+                          <div className="flex flex-col items-start gap-1">
+                            {summary.teachers.map(teacher => (
+                              <Badge key={teacher} variant="secondary">{teacher}</Badge>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                </div>
+                 <p className="text-xs text-muted-foreground">
+                  in current view
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </section>
         
@@ -994,3 +1034,5 @@ const allColumns = [
   { key: "otherTechnicalIssues", header: "Other Technical Issues"},
   { key: "satisfaction", header: "Satisfaction (1-5)"},
 ];
+
+    
