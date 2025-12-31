@@ -9,6 +9,11 @@ function getSheetId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+// Function to create a clean mapping key from a header string
+const normalizeHeader = (header: string): string => {
+    return header.toLowerCase().replace(/[^a-z0-9]/gi, '');
+}
+
 export async function POST(request: Request) {
   try {
     const { sheetUrl } = await request.json();
@@ -55,48 +60,47 @@ export async function POST(request: Request) {
       auth,
     });
 
-    const range = "Facebook_Dashboard";
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: range,
+      range: "Sheet28",
     });
 
     const rows = response.data.values;
     if (!rows || rows.length < 2) { // Need at least a header and one data row
       return NextResponse.json(
-        { error: `No data found in the '${range}' sheet.` },
+        { error: "No data found in the 'Sheet28' sheet." },
         { status: 404 }
       );
     }
-
+    
     const header = rows[0].map(h => h.trim());
     const classEntryKeys = Object.keys(getInitialClassEntry()) as (keyof ClassEntry)[];
     
-    // Create a map from spreadsheet header to ClassEntry key
-    const headerMap: { [key: number]: keyof ClassEntry } = {};
-    const lowerCaseKeyMap = new Map(classEntryKeys.map(k => [k.toLowerCase().replace(/[^a-z0-9]/gi, ''), k]));
+    // Create a map from a normalized header to the ClassEntry key
+    const normalizedKeyMap = new Map(classEntryKeys.map(k => [normalizeHeader(k), k]));
 
-    // A special map for headers that don't match the standard normalization
+    // Special mappings for headers that don't match the key names after normalization
     const specialHeaderMap: {[key: string]: keyof ClassEntry} = {
-      'teacher': 'teacher',
-      'teacher2doubtsolver1': 'teacher2',
-      'teacher3doubtsolver2': 'teacher3',
-      'totalcommentsnumber': 'totalComments',
-      'issuesdetails': 'issuesDetails',
-      'whichissueshaveyoufacedduringtheliveclass': 'liveClassIssues',
-      'besidesmentionedissueshaveyouencounteredanyothertechnicalissues': 'otherTechnicalIssues',
-      'onascaaleof1to5howsatisfiedareyouwithyourinstudioexperiencesatisfaction': 'satisfaction'
+        'entrytimet45t30': 'entryTime',
+        'slideqact15': 'slideQAC',
+        'teacher2doubtsolver1': 'teacher2',
+        'teacher3doubtsolver2': 'teacher3',
+        'totalcommentsnumber': 'totalComments',
+        'whichissueshaveyoufacedduringtheliveclass': 'liveClassIssues',
+        'besidesmentionedissueshaveyouencounteredanyothertechnicalissues': 'otherTechnicalIssues',
+        'onascalof1to5howsatisfiedareyouwithyourinstudioexperiencesatisfaction': 'satisfaction'
     };
 
+    const headerMap: { [key: number]: keyof ClassEntry } = {};
     header.forEach((h, i) => {
-        const normalizedHeader = h.toLowerCase().replace(/[^a-z0-9]/gi, '');
+        const normalizedHeader = normalizeHeader(h);
         if (specialHeaderMap[normalizedHeader]) {
              headerMap[i] = specialHeaderMap[normalizedHeader];
-        } else if (lowerCaseKeyMap.has(normalizedHeader)) {
-            headerMap[i] = lowerCaseKeyMap.get(normalizedHeader)!;
+        } else if (normalizedKeyMap.has(normalizedHeader)) {
+            headerMap[i] = normalizedKeyMap.get(normalizedHeader)!;
         }
     });
-    
+
     const data = rows.slice(1).map((row, index) => {
       const entry: Partial<ClassEntry> = { id: String(index + 1) };
       row.forEach((cellValue, i) => {
@@ -105,7 +109,7 @@ export async function POST(request: Request) {
               (entry as any)[key] = cellValue || "";
           }
       });
-      // Fill any missing keys with empty strings
+      // Fill any missing keys with empty strings to ensure type consistency
       classEntryKeys.forEach(key => {
         if (!(key in entry)) {
           (entry as any)[key] = "";
@@ -120,11 +124,8 @@ export async function POST(request: Request) {
 
     let userMessage = "An unexpected error occurred while fetching data from the sheet.";
     let statusCode = 500;
-    
-    if(error.message && error.message.includes('Unable to parse range')){
-      userMessage = `Could not find the sheet tab "Facebook_Dashboard". Please ensure it exists in your Google Sheet.`;
-      statusCode = 404;
-    } else if (error.code === 'ENOTFOUND') {
+
+    if (error.code === 'ENOTFOUND') {
         userMessage = "Could not connect to Google Sheets. Please check your network connection.";
         statusCode = 503; // Service Unavailable
     } else if (error.errors) {
