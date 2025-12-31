@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import { DataTable } from "@/components/dashboard/data-table";
 import type { ClassEntry } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X, LogOut, Calendar, User } from "lucide-react";
+import { BookOpen, BookCopy, Activity, Clock, TrendingUp, Users, Info, Columns, X, LogOut, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -47,49 +48,7 @@ const parseNumericValue = (value: string | number | undefined | null): number =>
 
 const parseDateString = (dateStr: string): Date | null => {
   if (!dateStr) return null;
-  
-  // Try parsing different date formats
-  // Format: "Wednesday, January 1, 2025"
-  const formats = [
-    /^(\w+),\s+(\w+)\s+(\d+),\s+(\d+)$/,  // Wednesday, January 1, 2025
-    /^(\d+)-(\w+)-(\d+)$/,                 // 1-Jan-2025
-    /^(\d{4})-(\d{2})-(\d{2})$/,           // 2025-01-01
-  ];
-  
-  const monthMap: { [key: string]: number } = {
-    'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
-    'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11,
-    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-  };
-  
-  // Try format: "Wednesday, January 1, 2025"
-  const match1 = dateStr.match(formats[0]);
-  if (match1) {
-    const [, , month, day, year] = match1;
-    const monthNum = monthMap[month];
-    if (monthNum !== undefined) {
-      return new Date(parseInt(year), monthNum, parseInt(day));
-    }
-  }
-  
-  // Try format: "1-Jan-2025"
-  const match2 = dateStr.match(formats[1]);
-  if (match2) {
-    const [, day, month, year] = match2;
-    const monthNum = monthMap[month];
-    if (monthNum !== undefined) {
-      return new Date(parseInt(year), monthNum, parseInt(day));
-    }
-  }
-  
-  // Try ISO format: "2025-01-01"
-  const match3 = dateStr.match(formats[2]);
-  if (match3) {
-    return new Date(dateStr);
-  }
-  
-  // Fallback to Date parsing
+  // Handles formats like "Wednesday, January 1, 2025" and other common ones
   const parsed = new Date(dateStr);
   return isNaN(parsed.getTime()) ? null : parsed;
 };
@@ -133,7 +92,7 @@ export default function Dashboard() {
         col.key as keyof ClassEntry
       );
     }
-    return visibility;
+    return visibility as Record<string, boolean>;
   });
 
 
@@ -277,14 +236,12 @@ export default function Dashboard() {
         
     const uniqueCourses = [...new Set(activeData.map(item => item.course).filter(Boolean))];
     const uniqueProductTypes = [...new Set(activeData.map(item => item.productType).filter(Boolean))];
-    const uniqueTeachers = [...new Set(activeData.map(item => item.teacher).filter(Boolean))];
 
     return {
       total: data.length,
       filtered: activeData.length,
       courses: uniqueCourses,
       productTypes: uniqueProductTypes,
-      teachers: uniqueTeachers,
       totalDuration: Math.round(totalDuration),
       highestAttendance: highestAttendance,
       topClass: topClass,
@@ -512,7 +469,7 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold tracking-tight mb-4">
             Data Analysis of Classes
           </h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-chart-1/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -718,7 +675,7 @@ export default function Dashboard() {
                                           <Table>
                                               <TableHeader>
                                                   <TableRow>
-                                                      <TableHead>Class Subject</TableHead>
+                                                      <TableHead>Class Topic</TableHead>
                                                       <TableHead>Course</TableHead>
                                                       <TableHead className="text-right">Attendance</TableHead>
                                                   </TableRow>
@@ -752,44 +709,6 @@ export default function Dashboard() {
                       </div>
                     </DialogContent>
                   </Dialog>
-                </div>
-                 <p className="text-xs text-muted-foreground">
-                  in current view
-                </p>
-              </CardContent>
-            </Card>
-             <Card className="border-chart-2/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Unique Teachers
-                </CardTitle>
-                <User className="h-4 w-4 text-chart-2" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold text-chart-2">{summary.teachers.length}</div>
-                  <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-5 w-5">
-                          <Info className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto max-w-[300px]" side="top" align="end">
-                         <div className="space-y-2">
-                            <h4 className="font-medium leading-none">Unique Teachers</h4>
-                            <p className="text-xs text-muted-foreground">
-                                List of unique teachers in the current view.
-                            </p>
-                        </div>
-                        <ScrollArea className="h-48 mt-4">
-                          <div className="flex flex-col items-start gap-1">
-                            {summary.teachers.map(teacher => (
-                              <Badge key={teacher} variant="secondary">{teacher}</Badge>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
                 </div>
                  <p className="text-xs text-muted-foreground">
                   in current view
@@ -920,7 +839,7 @@ export default function Dashboard() {
                       <DropdownMenuCheckboxItem
                         key={column.key}
                         className="capitalize"
-                        checked={columnVisibility[column.key as keyof ClassEntry]}
+                        checked={columnVisibility[column.key]}
                         onCheckedChange={(value) =>
                           setColumnVisibility((prev) => ({
                             ...prev,
@@ -1008,7 +927,7 @@ const defaultVisibleColumns: (keyof ClassEntry)[] = [
 ];
 
 
-const allColumns = [
+const allColumns: {key: keyof ClassEntry, header: string, sortable?: boolean}[] = [
   { key: "date", header: "Date", sortable: true },
   { key: "scheduledTime", header: "Scheduled Time", sortable: true },
   { key: "productType", header: "Product Type", sortable: true },
@@ -1022,19 +941,15 @@ const allColumns = [
   { key: "entryTime", header: "Entry Time" },
   { key: "slideQAC", header: "Slide QAC" },
   { key: "classStartTime", header: "Class Start Time" },
-  { key: "teacher1Gmail", header: "Teacher Gmail"},
+  { key: "teacher1Gmail", header: "Teacher Gmail" },
   { key: "teacher2", header: "Teacher 2" },
-  { key: "teacher2Gmail", header: "Teacher 2 Gmail"},
+  { key: "teacher2Gmail", header: "Teacher 2 Gmail" },
   { key: "teacher3", header: "Teacher 3" },
-  { key: "teacher3Gmail", header: "Teacher 3 Gmail"},
-  { key: "issuesType", header: "Issues Type"},
-  { key: "issuesDetails", header: "Issues Details"},
-  { key: "slideCommunication", header: "Slide Communication"},
-  { key: "liveClassIssues", header: "Live Class Issues"},
-  { key: "otherTechnicalIssues", header: "Other Technical Issues"},
-  { key: "satisfaction", header: "Satisfaction (1-5)"},
+  { key: "teacher3Gmail", header: "Teacher 3 Gmail" },
+  { key: "issuesType", header: "Issues Type" },
+  { key: "issuesDetails", header: "Issues Details" },
+  { key: "slideCommunication", header: "Slide Communication" },
+  { key: "liveClassIssues", header: "Live Class Issues" },
+  { key: "otherTechnicalIssues", header: "Other Technical Issues" },
+  { key: "satisfaction", header: "Satisfaction" },
 ];
-
-    
-
-    
