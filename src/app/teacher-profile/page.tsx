@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -337,7 +338,7 @@ export default function TeacherProfilePage() {
                                                                 <Table>
                                                                     <TableHeader>
                                                                         <TableRow>
-                                                                            <TableHead>Class Subject</TableHead>
+                                                                            <TableHead>Class Topic</TableHead>
                                                                             <TableHead>Course</TableHead>
                                                                             <TableHead className="text-right">Attendance</TableHead>
                                                                         </TableRow>
@@ -531,7 +532,7 @@ export default function TeacherProfilePage() {
                               <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Teacher</TableHead>
-                                <TableHead>Subject</TableHead>
+                                <TableHead>Topic</TableHead>
                                 <TableHead>Course</TableHead>
                                 <TableHead className="text-right">Avg. Attendance</TableHead>
                                 <TableHead className="text-right">Peak Attendance</TableHead>
