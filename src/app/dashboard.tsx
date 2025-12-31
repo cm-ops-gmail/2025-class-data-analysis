@@ -121,11 +121,11 @@ export default function Dashboard() {
   const [endCalendarMonth, setEndCalendarMonth] = useState(new Date());
   const [productTypeFilters, setProductTypeFilters] = useState<string[]>([]);
   const [courseFilters, setCourseFilters] = useState<string[]>([]);
-  const [teacher1Filters, setTeacher1Filters] = useState<string[]>([]);
+  const [teacherFilters, setTeacherFilters] = useState<string[]>([]);
   const [subjectFilters, setSubjectFilters] = useState<string[]>([]);
 
   const [columnVisibility, setColumnVisibility] = React.useState<
-    Record<keyof ClassEntry, boolean>
+    Record<string, boolean>
   >(() => {
     const visibility: Record<string, boolean> = {};
     for (const col of allColumns) {
@@ -133,7 +133,7 @@ export default function Dashboard() {
         col.key as keyof ClassEntry
       );
     }
-    return visibility as Record<keyof ClassEntry, boolean>;
+    return visibility;
   });
 
 
@@ -196,7 +196,7 @@ export default function Dashboard() {
     [data]
   );
   const teachers = useMemo(
-    () => [...new Set(data.map((item) => item.teacher1).filter(Boolean))],
+    () => [...new Set(data.map((item) => item.teacher).filter(Boolean))],
     [data]
   );
   const subjects = useMemo(
@@ -231,7 +231,7 @@ export default function Dashboard() {
       if (courseFilters.length > 0 && !courseFilters.includes(item.course)) {
           return false;
       }
-      if (teacher1Filters.length > 0 && !teacher1Filters.includes(item.teacher1)) {
+      if (teacherFilters.length > 0 && !teacherFilters.includes(item.teacher)) {
           return false;
       }
       if (subjectFilters.length > 0 && !subjectFilters.includes(item.subject)) {
@@ -245,13 +245,13 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [data, globalFilter, startDate, endDate, productTypeFilters, courseFilters, teacher1Filters, subjectFilters]);
+  }, [data, globalFilter, startDate, endDate, productTypeFilters, courseFilters, teacherFilters, subjectFilters]);
 
 
   const summary = useMemo(() => {
     const activeData = filteredData;
     const totalDuration = activeData.reduce((acc, item) => {
-      const duration = parseNumericValue(item.totalDurationMinutes);
+      const duration = parseNumericValue(item.totalDuration);
       return acc + duration;
     }, 0);
 
@@ -299,7 +299,7 @@ export default function Dashboard() {
     setTempEndDate(undefined);
     setProductTypeFilters([]);
     setCourseFilters([]);
-    setTeacher1Filters([]);
+    setTeacherFilters([]);
     setSubjectFilters([]);
   };
 
@@ -409,7 +409,7 @@ export default function Dashboard() {
     endDate !== undefined ||
     productTypeFilters.length > 0 ||
     courseFilters.length > 0 ||
-    teacher1Filters.length > 0 ||
+    teacherFilters.length > 0 ||
     subjectFilters.length > 0;
     
   const formatDuration = (totalMinutes: number) => {
@@ -426,7 +426,7 @@ export default function Dashboard() {
     return result.trim() || '0 min';
   };
 
-  const isFiltered = startDate !== undefined || endDate !== undefined || productTypeFilters.length > 0 || courseFilters.length > 0 || teacher1Filters.length > 0 || subjectFilters.length > 0;
+  const isFiltered = startDate !== undefined || endDate !== undefined || productTypeFilters.length > 0 || courseFilters.length > 0 || teacherFilters.length > 0 || subjectFilters.length > 0;
 
   const handleLogout = () => {
     localStorage.removeItem("dashboard_session");
@@ -444,7 +444,7 @@ export default function Dashboard() {
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="mb-8 space-y-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline">
-            2025 Class data analysis
+            Facebook Dashboard
           </h1>
           <p className="text-muted-foreground">
             An interactive view of your Google Sheet data.
@@ -453,10 +453,10 @@ export default function Dashboard() {
 
         {hasActiveFilters && (
           <div className="mb-8 rounded-lg border bg-card p-4 shadow-sm">
-            {teacher1Filters.length > 0 && (
+            {teacherFilters.length > 0 && (
               <div className="mb-3">
                 <h2 className="text-lg font-semibold tracking-tight">
-                  {teacher1Filters.join(", ")}
+                  {teacherFilters.join(", ")}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   Filtered Results
@@ -672,7 +672,7 @@ export default function Dashboard() {
                       </PopoverTrigger>
                       <PopoverContent className="text-sm w-auto" side="top" align="end">
                         <div className="grid gap-1">
-                          <div className="font-bold">{summary.topClass.topic}</div>
+                          <div className="font-bold">{summary.topClass.subject}</div>
                           <div className="text-xs text-muted-foreground">{summary.topClass.date}</div>
                         </div>
                       </PopoverContent>
@@ -716,7 +716,7 @@ export default function Dashboard() {
                                           <Table>
                                               <TableHeader>
                                                   <TableRow>
-                                                      <TableHead>Class Topic</TableHead>
+                                                      <TableHead>Class Subject</TableHead>
                                                       <TableHead>Course</TableHead>
                                                       <TableHead className="text-right">Attendance</TableHead>
                                                   </TableRow>
@@ -724,7 +724,7 @@ export default function Dashboard() {
                                               <TableBody>
                                                   {filteredData.map(item => (
                                                       <TableRow key={item.id}>
-                                                          <TableCell className="font-medium max-w-xs truncate">{item.topic}</TableCell>
+                                                          <TableCell className="font-medium max-w-xs truncate">{item.subject}</TableCell>
                                                           <TableCell>{item.course}</TableCell>
                                                           <TableCell className="text-right">{parseNumericValue(item.averageAttendance).toLocaleString()}</TableCell>
                                                       </TableRow>
@@ -841,8 +841,8 @@ export default function Dashboard() {
               <MultiSelectFilter
                 title="Teachers"
                 options={teachers.map(teacher => ({ value: teacher, label: teacher }))}
-                selectedValues={teacher1Filters}
-                onSelectedValuesChange={setTeacher1Filters}
+                selectedValues={teacherFilters}
+                onSelectedValuesChange={setTeacherFilters}
                 triggerClassName="w-full md:w-auto"
               />
               <MultiSelectFilter
@@ -939,13 +939,13 @@ export default function Dashboard() {
         <div className="container mx-auto flex items-center justify-between px-4 py-6 text-sm text-muted-foreground">
           <div>© 2025 10 MS Content Operations. All rights reserved.</div>
           <div className="flex items-center gap-6">
-            <a href="https://content-ops-project-and-ticket-management-system.vercel.app/" className="transition-colors hover:text-foreground">
-              Requisition and Project Management System
+            <a href="#" className="transition-colors hover:text-foreground">
+              Policy Book
             </a>
-            <a href="https://10ms-content-operations-projects-teal.vercel.app/" className="transition-colors hover:text-foreground">
+            <a href="#" className="transition-colors hover:text-foreground">
               Automation Projects
             </a>
-            <a href="https://meadow-lock-db7.notion.site/262f4f581e0d806796c1f9aa8fa0d6c9?v=262f4f581e0d809fbf2d000cfed8444c" className="transition-colors hover:text-foreground">
+            <a href="#" className="transition-colors hover:text-foreground">
               Automation Project Documentation
             </a>
           </div>
@@ -961,11 +961,10 @@ const defaultVisibleColumns: (keyof ClassEntry)[] = [
   "productType",
   "course",
   "subject",
-  "topic",
-  "teacher1",
+  "teacher",
   "highestAttendance",
   "averageAttendance",
-  "totalDurationMinutes",
+  "totalDuration",
 ];
 
 
@@ -975,37 +974,23 @@ const allColumns = [
   { key: "productType", header: "Product Type", sortable: true },
   { key: "course", header: "Course", sortable: true },
   { key: "subject", header: "Subject", sortable: true },
-  { key: "topic", header: "Topic", sortable: true },
-  { key: "teacher1", header: "Teacher 1", sortable: true },
-  { key: "studio", header: "Studio", sortable: true },
-  { key: "opsStakeholder", header: "Ops Stakeholder", sortable: true },
+  { key: "teacher", header: "Teacher", sortable: true },
   { key: "highestAttendance", header: "Highest Attendance", sortable: true },
   { key: "averageAttendance", header: "Average Attendance", sortable: true },
   { key: "totalComments", header: "Total Comments", sortable: true },
-  { key: "totalDurationMinutes", header: "Total Duration (min)", sortable: true },
+  { key: "totalDuration", header: "Total Duration (min)", sortable: true },
   { key: "entryTime", header: "Entry Time" },
   { key: "slideQAC", header: "Slide QAC" },
   { key: "classStartTime", header: "Class Start Time" },
+  { key: "teacher1Gmail", header: "Teacher Gmail"},
   { key: "teacher2", header: "Teacher 2" },
+  { key: "teacher2Gmail", header: "Teacher 2 Gmail"},
   { key: "teacher3", header: "Teacher 3" },
-  { key: "studioCoordinator", header: "Studio Coordinator" },
-  { key: "lectureSlide", header: "Lecture Slide" },
-  { key: "title", header: "Title" },
-  { key: "caption", header: "Caption" },
-  { key: "crossPost", header: "Cross Post" },
-  { key: "sourcePlatform", header: "Source Platform" },
-  { key: "teacherConfirmation", header: "Teacher Confirmation" },
-  { key: "zoomLink", header: "Zoom Link" },
-  { key: "zoomCredentials", header: "Zoom Credentials" },
-  { key: "moderatorLink", header: "Moderator Link" },
-  { key: "annotatedSlideLink", header: "Annotated Slide" },
-  { key: "classStopTimestamps", header: "Class Stop Timestamps" },
-  { key: "startDelayMinutes", header: "Start Delay (min)" },
-  { key: "viewCount10Min", header: "Views (10 Min)" },
-  { key: "viewCount40_50Min", "header": "Views (40-50 Min)" },
-  { key: "viewCountBeforeEnd", header: "Views (End)" },
-  { key: "classLink", header: "Class LINK" },
-  { key: "recordingLink", header: "Recording Link" },
-  { key: "classQACFeedback", header: "QAC Feedback" },
-  { key: "remarks", header: "Remarks" }
+  { key: "teacher3Gmail", header: "Teacher 3 Gmail"},
+  { key: "issuesType", header: "Issues Type"},
+  { key: "issuesDetails", header: "Issues Details"},
+  { key: "slideCommunication", header: "Slide Communication"},
+  { key: "liveClassIssues", header: "Live Class Issues"},
+  { key: "otherTechnicalIssues", header: "Other Technical Issues"},
+  { key: "satisfaction", header: "Satisfaction (1-5)"},
 ];
